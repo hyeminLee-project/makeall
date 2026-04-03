@@ -5,6 +5,7 @@ import { buildCodeReviewPrompt } from "@/lib/prompts";
 import { createRateLimit } from "@/lib/rate-limit";
 
 const TIMEOUT_MS = 30_000;
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 10 });
 
 export async function POST(req: Request) {
@@ -19,10 +20,7 @@ export async function POST(req: Request) {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY가 설정되지 않았습니다." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
     }
 
     const parsed = codeReviewRequestSchema.safeParse(await req.json());
@@ -33,7 +31,6 @@ export async function POST(req: Request) {
     const { code, language, focus } = parsed.data;
     const prompt = buildCodeReviewPrompt({ code, language, focus });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Gemini API request timed out")), TIMEOUT_MS)
     );
@@ -70,9 +67,6 @@ export async function POST(req: Request) {
     return NextResponse.json(responseParsed.data);
   } catch (error) {
     console.error("Code Review API Error:", error);
-    return NextResponse.json(
-      { error: "코드 리뷰 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "코드 리뷰 중 오류가 발생했습니다." }, { status: 500 });
   }
 }

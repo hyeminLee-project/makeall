@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+function getEnvOrThrow(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`환경변수 ${name}이(가) 설정되지 않았습니다.`);
+  return value;
+}
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(
+  getEnvOrThrow("NEXT_PUBLIC_SUPABASE_URL"),
+  getEnvOrThrow("SUPABASE_SERVICE_ROLE_KEY")
+);
