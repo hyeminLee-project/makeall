@@ -42,9 +42,7 @@ export type StyleProfile = z.infer<typeof styleProfileSchema>;
 export const codeReviewRequestSchema = z.object({
   code: z.string().min(1).max(50000),
   language: z.string().default("typescript"),
-  focus: z
-    .array(z.enum(["security", "performance", "readability", "all"]))
-    .default(["all"]),
+  focus: z.array(z.enum(["security", "performance", "readability", "all"])).default(["all"]),
 });
 
 export type CodeReviewRequest = z.infer<typeof codeReviewRequestSchema>;

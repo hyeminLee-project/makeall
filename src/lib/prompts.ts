@@ -81,9 +81,7 @@ export function buildCodeReviewPrompt({
   language: string;
   focus: string[];
 }) {
-  const focusDesc = focus.includes("all")
-    ? "보안, 성능, 가독성 전체"
-    : focus.join(", ");
+  const focusDesc = focus.includes("all") ? "보안, 성능, 가독성 전체" : focus.join(", ");
 
   return `
     당신은 시니어 소프트웨어 엔지니어입니다.

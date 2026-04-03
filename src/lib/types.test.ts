@@ -39,9 +39,7 @@ describe("codeReviewResponseSchema", () => {
   it("accepts valid response", () => {
     const result = codeReviewResponseSchema.safeParse({
       summary: "Good code",
-      issues: [
-        { severity: "warning", message: "Unused variable", line: 1 },
-      ],
+      issues: [{ severity: "warning", message: "Unused variable", line: 1 }],
       score: 85,
     });
     expect(result.success).toBe(true);
