@@ -10,7 +10,8 @@ const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 10 });
 
 export async function POST(req: Request) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+    const forwarded = req.headers.get("x-forwarded-for");
+    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(
@@ -66,7 +67,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(responseParsed.data);
   } catch (error) {
-    console.error("Code Review API Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Code Review API Error:", message);
     return NextResponse.json({ error: "코드 리뷰 중 오류가 발생했습니다." }, { status: 500 });
   }
 }

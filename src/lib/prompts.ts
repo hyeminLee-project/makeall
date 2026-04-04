@@ -1,3 +1,4 @@
+import { sanitizeUserInput } from "./sanitize";
 import { StyleProfile } from "./types";
 
 export function buildWritingPrompt({
@@ -11,10 +12,11 @@ export function buildWritingPrompt({
   platforms: string[];
   styleProfile?: StyleProfile | null;
 }) {
+  const sanitized = sanitizeUserInput(input);
   const inputDesc =
     inputType === "url"
-      ? `다음 URL의 내용을 참고하여 콘텐츠를 작성해주세요: ${input}`
-      : `다음 아이디어를 기반으로 콘텐츠를 작성해주세요: ${input}`;
+      ? `다음 URL의 내용을 참고하여 콘텐츠를 작성해주세요: ${sanitized}`
+      : `다음 아이디어를 기반으로 콘텐츠를 작성해주세요: ${sanitized}`;
 
   const styleGuide = styleProfile
     ? `
@@ -91,7 +93,7 @@ export function buildCodeReviewPrompt({
 
     [코드]
     \`\`\`${language}
-    ${code}
+    ${sanitizeUserInput(code)}
     \`\`\`
 
     [출력 형식] (반드시 JSON으로 응답)
@@ -111,7 +113,7 @@ export function buildCodeReviewPrompt({
 }
 
 export function buildStyleAnalysisPrompt(samples: string[]) {
-  const sampleText = samples.map((s, i) => `[샘플 ${i + 1}]\n${s}`).join("\n\n");
+  const sampleText = samples.map((s, i) => `[샘플 ${i + 1}]\n${sanitizeUserInput(s)}`).join("\n\n");
 
   return `
     다음은 한 사람이 작성한 글 샘플들입니다. 이 사람의 글쓰기 스타일을 분석해주세요.
