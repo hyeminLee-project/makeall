@@ -26,6 +26,11 @@ import {
   affiliateAnalyzeResponseSchema,
   affiliateGenerateRequestSchema,
   affiliateGenerateResponseSchema,
+  messengerNotifyRequestSchema,
+  messengerCallbackSchema,
+  telegramUpdateSchema,
+  discordInteractionSchema,
+  messengerConnectRequestSchema,
 } from "./types";
 
 describe("codeReviewRequestSchema", () => {
@@ -758,5 +763,122 @@ describe("affiliateGenerateResponseSchema", () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+// ─── Messenger (텔레그램 + 디스코드) ────────────────
+
+describe("messengerNotifyRequestSchema", () => {
+  it("accepts valid notify request", () => {
+    const result = messengerNotifyRequestSchema.safeParse({
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      type: "draft_ready",
+      payload: {
+        title: "에피소드 3 초안 완성",
+        preview: "서진은 서점 문을 열었다...",
+        draftId: "550e8400-e29b-41d4-a716-446655440001",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid type", () => {
+    const result = messengerNotifyRequestSchema.safeParse({
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      type: "unknown_type",
+      payload: { title: "test", preview: "test", draftId: "550e8400-e29b-41d4-a716-446655440001" },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("messengerCallbackSchema", () => {
+  it("accepts valid callback", () => {
+    const result = messengerCallbackSchema.safeParse({
+      action: "approve",
+      draftId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid action", () => {
+    const result = messengerCallbackSchema.safeParse({
+      action: "delete",
+      draftId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("telegramUpdateSchema", () => {
+  it("accepts message update", () => {
+    const result = telegramUpdateSchema.safeParse({
+      update_id: 12345,
+      message: {
+        message_id: 1,
+        from: { id: 123, first_name: "혜민" },
+        chat: { id: 123, type: "private" },
+        text: "/start ABC123",
+        date: 1700000000,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts callback_query update", () => {
+    const result = telegramUpdateSchema.safeParse({
+      update_id: 12346,
+      callback_query: {
+        id: "cb_123",
+        from: { id: 123 },
+        data: '{"action":"approve","draftId":"abc"}',
+        message: { chat: { id: 123 }, message_id: 1 },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("discordInteractionSchema", () => {
+  it("accepts PING interaction", () => {
+    const result = discordInteractionSchema.safeParse({
+      type: 1,
+      token: "interaction_token",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts MESSAGE_COMPONENT interaction", () => {
+    const result = discordInteractionSchema.safeParse({
+      type: 3,
+      data: { custom_id: '{"action":"approve","draftId":"abc"}' },
+      member: { user: { id: "123", username: "hyemin" } },
+      channel_id: "456",
+      token: "interaction_token",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("messengerConnectRequestSchema", () => {
+  it("accepts telegram", () => {
+    const result = messengerConnectRequestSchema.safeParse({
+      provider: "telegram",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts discord", () => {
+    const result = messengerConnectRequestSchema.safeParse({
+      provider: "discord",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid provider", () => {
+    const result = messengerConnectRequestSchema.safeParse({
+      provider: "slack",
+    });
+    expect(result.success).toBe(false);
   });
 });

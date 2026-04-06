@@ -372,3 +372,78 @@ export const affiliateGenerateResponseSchema = z.object({
 });
 
 export type AffiliateGenerateResponse = z.infer<typeof affiliateGenerateResponseSchema>;
+
+// ─── Messenger (텔레그램 + 디스코드) ────────────────
+
+export const messengerProviderEnum = z.enum(["telegram", "discord"]);
+export type MessengerProvider = z.infer<typeof messengerProviderEnum>;
+
+export const messengerNotifyRequestSchema = z.object({
+  userId: z.uuid(),
+  type: z.enum(["draft_ready", "publish_complete", "publish_failed", "review_needed"]),
+  payload: z.object({
+    title: z.string(),
+    preview: z.string().max(500),
+    draftId: z.uuid(),
+    platforms: z.array(z.string()).optional(),
+  }),
+});
+
+export type MessengerNotifyRequest = z.infer<typeof messengerNotifyRequestSchema>;
+
+export const messengerCallbackSchema = z.object({
+  action: z.enum(["approve", "reject", "preview", "feedback"]),
+  draftId: z.uuid(),
+});
+
+export type MessengerCallback = z.infer<typeof messengerCallbackSchema>;
+
+export const telegramUpdateSchema = z.object({
+  update_id: z.number(),
+  message: z
+    .object({
+      message_id: z.number(),
+      from: z.object({ id: z.number(), first_name: z.string() }),
+      chat: z.object({ id: z.number(), type: z.string() }),
+      text: z.string().optional(),
+      date: z.number(),
+    })
+    .optional(),
+  callback_query: z
+    .object({
+      id: z.string(),
+      from: z.object({ id: z.number() }),
+      data: z.string().optional(),
+      message: z
+        .object({
+          chat: z.object({ id: z.number() }),
+          message_id: z.number(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type TelegramUpdate = z.infer<typeof telegramUpdateSchema>;
+
+export const discordInteractionSchema = z.object({
+  type: z.number(),
+  data: z
+    .object({
+      custom_id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+  member: z.object({ user: z.object({ id: z.string(), username: z.string() }) }).optional(),
+  user: z.object({ id: z.string(), username: z.string() }).optional(),
+  channel_id: z.string().optional(),
+  token: z.string(),
+});
+
+export type DiscordInteraction = z.infer<typeof discordInteractionSchema>;
+
+export const messengerConnectRequestSchema = z.object({
+  provider: messengerProviderEnum,
+});
+
+export type MessengerConnectRequest = z.infer<typeof messengerConnectRequestSchema>;
