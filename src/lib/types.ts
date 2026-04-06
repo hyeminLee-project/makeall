@@ -113,6 +113,7 @@ export const seriesCreateRequestSchema = z.object({
   targetEpisodeLength: z.number().min(1000).max(20000).default(5000),
   styleProfileId: z.uuid().nullable().optional(),
   tone: z.string().max(500).optional(),
+  referenceStyle: z.string().max(2000).nullable().optional(),
 });
 
 export type SeriesCreateRequest = z.infer<typeof seriesCreateRequestSchema>;

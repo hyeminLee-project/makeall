@@ -148,6 +148,7 @@ export function buildEpisodeGenerationPrompt({
   plotPoints,
   specialInstructions,
   styleProfile,
+  referenceStyle,
 }: {
   title: string;
   genre: string;
@@ -163,6 +164,7 @@ export function buildEpisodeGenerationPrompt({
   plotPoints: string[];
   specialInstructions?: string | null;
   styleProfile?: StyleProfile | null;
+  referenceStyle?: string | null;
 }) {
   const characterDesc = characters
     .map((c) => {
@@ -197,6 +199,15 @@ export function buildEpisodeGenerationPrompt({
     이 문체를 최대한 반영하여 작성해주세요.`
     : "";
 
+  const referenceBlock = referenceStyle
+    ? `
+    [레퍼런스 문체 — 반드시 이 문체를 유지하세요]
+    아래는 이 시리즈의 기준이 되는 문체 샘플입니다. 문장 길이, 종결어미, 묘사 방식, 리듬감을 최대한 일치시켜 주세요.
+    ---
+    ${sanitizeUserInput(referenceStyle)}
+    ---`
+    : "";
+
   return `
     당신은 연재 소설 작가의 조수입니다.
     사용자의 플롯 아웃라인을 기반으로 에피소드 초안을 작성합니다.
@@ -218,6 +229,7 @@ export function buildEpisodeGenerationPrompt({
 
     ${continuityBlock}
     ${styleGuide}
+    ${referenceBlock}
 
     [에피소드 ${episodeNumber} 작성 요청]
     아웃라인: ${sanitizeUserInput(episodeOutline)}

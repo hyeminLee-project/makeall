@@ -60,6 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ seriesI
       plotPoints,
       specialInstructions,
       styleProfile: null,
+      referenceStyle: series.reference_style,
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
