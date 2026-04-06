@@ -1,5 +1,5 @@
 import { sanitizeUserInput } from "./sanitize";
-import { StyleProfile } from "./types";
+import { Character, SeriesContinuity, StyleProfile } from "./types";
 
 export function buildWritingPrompt({
   input,
@@ -130,5 +130,157 @@ export function buildStyleAnalysisPrompt(samples: string[]) {
       "vocabulary": ["자주 사용하는 단어 5~10개"],
       "expressions": ["특징적인 표현 패턴 3~5개"]
     }
+  `;
+}
+
+export function buildEpisodeGenerationPrompt({
+  title,
+  genre,
+  setting,
+  characters,
+  plotOutline,
+  targetEpisodeLength,
+  tone,
+  continuity,
+  episodeOutline,
+  episodeNumber,
+  focusCharacters,
+  plotPoints,
+  specialInstructions,
+  styleProfile,
+}: {
+  title: string;
+  genre: string;
+  setting: string;
+  characters: Character[];
+  plotOutline: string;
+  targetEpisodeLength: number;
+  tone?: string | null;
+  continuity?: SeriesContinuity | null;
+  episodeOutline: string;
+  episodeNumber: number;
+  focusCharacters: string[];
+  plotPoints: string[];
+  specialInstructions?: string | null;
+  styleProfile?: StyleProfile | null;
+}) {
+  const characterDesc = characters
+    .map((c) => {
+      const state = continuity?.characterStates[c.name];
+      const rels = c.relationships.map((r) => `${r.characterName}: ${r.relationship}`).join(", ");
+      return `- ${c.name} (${c.role}): ${c.description}
+      성격: ${c.personality}${rels ? `\n      관계: ${rels}` : ""}${state ? `\n      현재 상태: ${state}` : ""}`;
+    })
+    .join("\n    ");
+
+  const continuityBlock = continuity
+    ? `
+    [이전 이야기 요약]
+    ${continuity.previousEpisodesSummary}
+
+    [미해결 복선]
+    ${continuity.unresolvedPlotThreads.map((t) => `- ${t}`).join("\n    ")}
+
+    [타임라인 위치]
+    ${continuity.timelinePosition}`
+    : "[첫 번째 에피소드입니다]";
+
+  const styleGuide = styleProfile
+    ? `
+    [작성자 문체 가이드]
+    - 문장 길이: ${styleProfile.sentenceLength}
+    - 톤: ${styleProfile.tone}
+    - 문장 종결: ${styleProfile.ending}
+    - 유머: ${styleProfile.humor}
+    - 글 구조: ${styleProfile.structure}
+    - 자주 쓰는 표현: ${styleProfile.expressions.join(", ")}
+    이 문체를 최대한 반영하여 작성해주세요.`
+    : "";
+
+  return `
+    당신은 연재 소설 작가의 조수입니다.
+    사용자의 플롯 아웃라인을 기반으로 에피소드 초안을 작성합니다.
+    사용자가 직접 수정할 것이므로, 완벽한 완성본이 아닌 좋은 초안을 목표로 합니다.
+
+    [작품 정보]
+    제목: ${sanitizeUserInput(title)}
+    장르: ${genre}
+    ${tone ? `톤: ${tone}` : ""}
+
+    [세계관]
+    ${sanitizeUserInput(setting)}
+
+    [전체 줄거리]
+    ${sanitizeUserInput(plotOutline)}
+
+    [등장인물]
+    ${characterDesc}
+
+    ${continuityBlock}
+    ${styleGuide}
+
+    [에피소드 ${episodeNumber} 작성 요청]
+    아웃라인: ${sanitizeUserInput(episodeOutline)}
+    ${focusCharacters.length > 0 ? `중심 인물: ${focusCharacters.join(", ")}` : ""}
+    포함할 사건:
+    ${plotPoints.map((p) => `- ${sanitizeUserInput(p)}`).join("\n    ")}
+    ${specialInstructions ? `특별 지시: ${sanitizeUserInput(specialInstructions)}` : ""}
+
+    목표 분량: 약 ${targetEpisodeLength}자
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "draft": "에피소드 본문",
+      "episodeNumber": ${episodeNumber},
+      "wordCount": 글자수,
+      "continuityNotes": ["이번 에피소드에서 바뀐 점 1", "바뀐 점 2"],
+      "suggestedNextPlotPoints": ["다음 에피소드 제안 1", "제안 2"]
+    }
+  `;
+}
+
+export function buildContinuityUpdatePrompt({
+  episodeContent,
+  currentContinuity,
+  characters,
+  episodeNumber,
+}: {
+  episodeContent: string;
+  currentContinuity: SeriesContinuity | null;
+  characters: Character[];
+  episodeNumber: number;
+}) {
+  const currentSummary = currentContinuity?.previousEpisodesSummary ?? "없음 (첫 에피소드)";
+  const currentThreads = currentContinuity?.unresolvedPlotThreads ?? [];
+  const characterNames = characters.map((c) => c.name).join(", ");
+
+  return `
+    다음은 연재 소설의 에피소드 ${episodeNumber}의 완성된 내용입니다.
+    이 에피소드를 반영하여 연속성 상태를 업데이트해주세요.
+
+    [기존 요약]
+    ${currentSummary}
+
+    [기존 미해결 복선]
+    ${currentThreads.map((t) => `- ${t}`).join("\n    ") || "없음"}
+
+    [에피소드 ${episodeNumber} 내용]
+    ${sanitizeUserInput(episodeContent)}
+
+    [등장인물 목록]
+    ${characterNames}
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "previousEpisodesSummary": "에피소드 ${episodeNumber}까지의 통합 요약 (3000자 이내)",
+      "characterStates": {
+        "캐릭터이름": "현재 상태/상황 요약"
+      },
+      "unresolvedPlotThreads": ["미해결 복선 1", "복선 2"],
+      "timelinePosition": "현재 시점 설명"
+    }
+
+    주의: 요약은 3000자를 넘지 않도록 이전 요약과 새 에피소드를 압축하세요.
+    등장인물 중 이번 에피소드에 등장한 인물만 characterStates에 포함하세요.
   `;
 }
