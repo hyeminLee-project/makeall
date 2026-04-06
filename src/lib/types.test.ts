@@ -22,6 +22,10 @@ import {
   templateRulesSchema,
   scheduleCreateRequestSchema,
   automationExecutionResponseSchema,
+  affiliateAnalyzeRequestSchema,
+  affiliateAnalyzeResponseSchema,
+  affiliateGenerateRequestSchema,
+  affiliateGenerateResponseSchema,
 } from "./types";
 
 describe("codeReviewRequestSchema", () => {
@@ -635,6 +639,123 @@ describe("automationExecutionResponseSchema", () => {
       ruleValidation: { passed: false, failures: ["최소 길이 미달"] },
       published: false,
       publishedPlatforms: [],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── Affiliate (수익화 어시스턴트) ──────────────────
+
+describe("affiliateAnalyzeRequestSchema", () => {
+  it("accepts valid request", () => {
+    const result = affiliateAnalyzeRequestSchema.safeParse({
+      draftContent: "출퇴근길에 듣기 좋은 무선 이어폰을 소개합니다.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("defaults provider to coupang", () => {
+    const result = affiliateAnalyzeRequestSchema.safeParse({
+      draftContent: "테스트 글",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.provider).toBe("coupang");
+    }
+  });
+
+  it("defaults maxSuggestions to 5", () => {
+    const result = affiliateAnalyzeRequestSchema.safeParse({
+      draftContent: "테스트 글",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxSuggestions).toBe(5);
+    }
+  });
+
+  it("rejects empty draftContent", () => {
+    const result = affiliateAnalyzeRequestSchema.safeParse({
+      draftContent: "",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("affiliateAnalyzeResponseSchema", () => {
+  it("accepts valid response", () => {
+    const result = affiliateAnalyzeResponseSchema.safeParse({
+      suggestions: [
+        {
+          anchorText: "무선 이어폰",
+          surroundingContext: "출퇴근길에 듣기 좋은 무선 이어폰을 소개합니다.",
+          position: { paragraphIndex: 0, startOffset: 12, endOffset: 18 },
+          productCategory: "electronics/earphones",
+          reasoning: "제품 언급이 자연스러운 위치",
+          confidence: 85,
+        },
+      ],
+      overallFit: 70,
+      tips: ["제품 비교 섹션을 추가하면 더 효과적입니다"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects confidence out of range", () => {
+    const result = affiliateAnalyzeResponseSchema.safeParse({
+      suggestions: [
+        {
+          anchorText: "test",
+          surroundingContext: "test",
+          position: { paragraphIndex: 0, startOffset: 0, endOffset: 4 },
+          productCategory: "test",
+          reasoning: "test",
+          confidence: 150,
+        },
+      ],
+      overallFit: 50,
+      tips: [],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("affiliateGenerateRequestSchema", () => {
+  it("accepts valid request", () => {
+    const result = affiliateGenerateRequestSchema.safeParse({
+      approvedSuggestions: [
+        {
+          anchorText: "무선 이어폰",
+          productCategory: "electronics/earphones",
+          position: { paragraphIndex: 0, startOffset: 12, endOffset: 18 },
+        },
+      ],
+      draftContent: "출퇴근길에 듣기 좋은 무선 이어폰을 소개합니다.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty draftContent", () => {
+    const result = affiliateGenerateRequestSchema.safeParse({
+      approvedSuggestions: [],
+      draftContent: "",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("affiliateGenerateResponseSchema", () => {
+  it("accepts valid response", () => {
+    const result = affiliateGenerateResponseSchema.safeParse({
+      modifiedDraft:
+        '출퇴근길에 듣기 좋은 <a href="https://coupang.com/...">무선 이어폰</a>을 소개합니다.',
+      insertedLinks: [
+        {
+          anchorText: "무선 이어폰",
+          url: "https://coupang.com/...",
+          productName: "삼성 갤럭시 버즈3",
+        },
+      ],
     });
     expect(result.success).toBe(true);
   });

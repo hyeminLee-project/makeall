@@ -296,3 +296,45 @@ export function buildContinuityUpdatePrompt({
     등장인물 중 이번 에피소드에 등장한 인물만 characterStates에 포함하세요.
   `;
 }
+
+export function buildAffiliateAnalysisPrompt({
+  draftContent,
+  maxSuggestions,
+}: {
+  draftContent: string;
+  maxSuggestions: number;
+}) {
+  return `
+    당신은 콘텐츠 수익화 전문가입니다.
+    아래 글을 읽고, 어필리에이트(제휴) 링크를 자연스럽게 삽입할 수 있는 위치를 제안해주세요.
+
+    [규칙]
+    - 제품 언급이 자연스럽게 어울리는 위치만 제안하세요. 강제 삽입은 피하세요.
+    - 글의 맥락과 관련 없는 제품은 제안하지 마세요.
+    - 최대 ${maxSuggestions}개까지만 제안하세요.
+    - 각 제안에 대해 왜 이 위치가 적절한지 이유를 설명하세요.
+
+    [글 내용]
+    ${sanitizeUserInput(draftContent)}
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "suggestions": [
+        {
+          "anchorText": "링크를 걸 텍스트 (글에서 그대로 발췌)",
+          "surroundingContext": "해당 문장 전체",
+          "position": {
+            "paragraphIndex": 문단 번호 (0부터),
+            "startOffset": 문단 내 시작 위치,
+            "endOffset": 문단 내 끝 위치
+          },
+          "productCategory": "제품 카테고리 (예: electronics/earphones)",
+          "reasoning": "이 위치가 적절한 이유",
+          "confidence": 0~100
+        }
+      ],
+      "overallFit": 0~100 (이 글의 수익화 적합도),
+      "tips": ["수익화 개선 팁 1", "팁 2"]
+    }
+  `;
+}

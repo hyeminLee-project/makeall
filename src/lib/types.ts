@@ -308,3 +308,67 @@ export const automationExecutionResponseSchema = z.object({
 });
 
 export type AutomationExecutionResponse = z.infer<typeof automationExecutionResponseSchema>;
+
+// ─── Affiliate (수익화 어시스턴트) ──────────────────
+
+export const affiliateAnalyzeRequestSchema = z.object({
+  draftContent: z.string().min(1).max(50000),
+  provider: z.enum(["coupang"]).default("coupang"),
+  maxSuggestions: z.number().min(1).max(20).default(5),
+});
+
+export type AffiliateAnalyzeRequest = z.infer<typeof affiliateAnalyzeRequestSchema>;
+
+export const affiliateSuggestionSchema = z.object({
+  anchorText: z.string(),
+  surroundingContext: z.string(),
+  position: z.object({
+    paragraphIndex: z.number(),
+    startOffset: z.number(),
+    endOffset: z.number(),
+  }),
+  productCategory: z.string(),
+  reasoning: z.string(),
+  confidence: z.number().min(0).max(100),
+});
+
+export type AffiliateSuggestion = z.infer<typeof affiliateSuggestionSchema>;
+
+export const affiliateAnalyzeResponseSchema = z.object({
+  suggestions: z.array(affiliateSuggestionSchema),
+  overallFit: z.number().min(0).max(100),
+  tips: z.array(z.string()),
+});
+
+export type AffiliateAnalyzeResponse = z.infer<typeof affiliateAnalyzeResponseSchema>;
+
+export const affiliateGenerateRequestSchema = z.object({
+  approvedSuggestions: z.array(
+    z.object({
+      anchorText: z.string(),
+      productCategory: z.string(),
+      position: z.object({
+        paragraphIndex: z.number(),
+        startOffset: z.number(),
+        endOffset: z.number(),
+      }),
+    })
+  ),
+  provider: z.enum(["coupang"]).default("coupang"),
+  draftContent: z.string().min(1).max(50000),
+});
+
+export type AffiliateGenerateRequest = z.infer<typeof affiliateGenerateRequestSchema>;
+
+export const affiliateGenerateResponseSchema = z.object({
+  modifiedDraft: z.string(),
+  insertedLinks: z.array(
+    z.object({
+      anchorText: z.string(),
+      url: z.string(),
+      productName: z.string(),
+    })
+  ),
+});
+
+export type AffiliateGenerateResponse = z.infer<typeof affiliateGenerateResponseSchema>;
