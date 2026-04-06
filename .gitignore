@@ -40,6 +40,9 @@ yarn-error.log*
 # project context
 context.md
 
+# test scripts
+/scripts/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

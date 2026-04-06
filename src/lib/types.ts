@@ -113,6 +113,7 @@ export const seriesCreateRequestSchema = z.object({
   targetEpisodeLength: z.number().min(1000).max(20000).default(5000),
   styleProfileId: z.uuid().nullable().optional(),
   tone: z.string().max(500).optional(),
+  referenceStyle: z.string().max(2000).nullable().optional(),
 });
 
 export type SeriesCreateRequest = z.infer<typeof seriesCreateRequestSchema>;
@@ -307,3 +308,142 @@ export const automationExecutionResponseSchema = z.object({
 });
 
 export type AutomationExecutionResponse = z.infer<typeof automationExecutionResponseSchema>;
+
+// ─── Affiliate (수익화 어시스턴트) ──────────────────
+
+export const affiliateAnalyzeRequestSchema = z.object({
+  draftContent: z.string().min(1).max(50000),
+  provider: z.enum(["coupang"]).default("coupang"),
+  maxSuggestions: z.number().min(1).max(20).default(5),
+});
+
+export type AffiliateAnalyzeRequest = z.infer<typeof affiliateAnalyzeRequestSchema>;
+
+export const affiliateSuggestionSchema = z.object({
+  anchorText: z.string(),
+  surroundingContext: z.string(),
+  position: z.object({
+    paragraphIndex: z.number(),
+    startOffset: z.number(),
+    endOffset: z.number(),
+  }),
+  productCategory: z.string(),
+  reasoning: z.string(),
+  confidence: z.number().min(0).max(100),
+});
+
+export type AffiliateSuggestion = z.infer<typeof affiliateSuggestionSchema>;
+
+export const affiliateAnalyzeResponseSchema = z.object({
+  suggestions: z.array(affiliateSuggestionSchema),
+  overallFit: z.number().min(0).max(100),
+  tips: z.array(z.string()),
+});
+
+export type AffiliateAnalyzeResponse = z.infer<typeof affiliateAnalyzeResponseSchema>;
+
+export const affiliateGenerateRequestSchema = z.object({
+  approvedSuggestions: z.array(
+    z.object({
+      anchorText: z.string(),
+      productCategory: z.string(),
+      position: z.object({
+        paragraphIndex: z.number(),
+        startOffset: z.number(),
+        endOffset: z.number(),
+      }),
+    })
+  ),
+  provider: z.enum(["coupang"]).default("coupang"),
+  draftContent: z.string().min(1).max(50000),
+});
+
+export type AffiliateGenerateRequest = z.infer<typeof affiliateGenerateRequestSchema>;
+
+export const affiliateGenerateResponseSchema = z.object({
+  modifiedDraft: z.string(),
+  insertedLinks: z.array(
+    z.object({
+      anchorText: z.string(),
+      url: z.string(),
+      productName: z.string(),
+    })
+  ),
+});
+
+export type AffiliateGenerateResponse = z.infer<typeof affiliateGenerateResponseSchema>;
+
+// ─── Messenger (텔레그램 + 디스코드) ────────────────
+
+export const messengerProviderEnum = z.enum(["telegram", "discord"]);
+export type MessengerProvider = z.infer<typeof messengerProviderEnum>;
+
+export const messengerNotifyRequestSchema = z.object({
+  userId: z.uuid(),
+  type: z.enum(["draft_ready", "publish_complete", "publish_failed", "review_needed"]),
+  payload: z.object({
+    title: z.string(),
+    preview: z.string().max(500),
+    draftId: z.uuid(),
+    platforms: z.array(z.string()).optional(),
+  }),
+});
+
+export type MessengerNotifyRequest = z.infer<typeof messengerNotifyRequestSchema>;
+
+export const messengerCallbackSchema = z.object({
+  action: z.enum(["approve", "reject", "preview", "feedback"]),
+  draftId: z.uuid(),
+});
+
+export type MessengerCallback = z.infer<typeof messengerCallbackSchema>;
+
+export const telegramUpdateSchema = z.object({
+  update_id: z.number(),
+  message: z
+    .object({
+      message_id: z.number(),
+      from: z.object({ id: z.number(), first_name: z.string() }),
+      chat: z.object({ id: z.number(), type: z.string() }),
+      text: z.string().optional(),
+      date: z.number(),
+    })
+    .optional(),
+  callback_query: z
+    .object({
+      id: z.string(),
+      from: z.object({ id: z.number() }),
+      data: z.string().optional(),
+      message: z
+        .object({
+          chat: z.object({ id: z.number() }),
+          message_id: z.number(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type TelegramUpdate = z.infer<typeof telegramUpdateSchema>;
+
+export const discordInteractionSchema = z.object({
+  type: z.number(),
+  data: z
+    .object({
+      custom_id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+  member: z.object({ user: z.object({ id: z.string(), username: z.string() }) }).optional(),
+  user: z.object({ id: z.string(), username: z.string() }).optional(),
+  channel_id: z.string().optional(),
+  token: z.string(),
+});
+
+export type DiscordInteraction = z.infer<typeof discordInteractionSchema>;
+
+export const messengerConnectRequestSchema = z.object({
+  provider: messengerProviderEnum,
+});
+
+export type MessengerConnectRequest = z.infer<typeof messengerConnectRequestSchema>;

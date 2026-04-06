@@ -101,9 +101,18 @@ export async function POST(
       lastEpisodeNumber: episode.episode_number,
     };
 
+    const seriesUpdate: Record<string, unknown> = {
+      continuity_state: newContinuity,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (episode.episode_number === 1) {
+      seriesUpdate.reference_style = content.slice(0, 2000);
+    }
+
     const { error: updateSeriesError } = await supabase
       .from("series")
-      .update({ continuity_state: newContinuity, updated_at: new Date().toISOString() })
+      .update(seriesUpdate)
       .eq("id", seriesId);
 
     if (updateSeriesError) {
