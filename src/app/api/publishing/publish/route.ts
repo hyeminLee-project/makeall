@@ -44,19 +44,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ scheduled: true, scheduledAt }, { status: 201 });
     }
 
-    const { data: draft } = await supabase
-      .from("episodes")
-      .select("draft, final_content")
+    // drafts 테이블 먼저 조회, 없으면 episodes 테이블 조회
+    const { data: draftRow } = await supabase
+      .from("drafts")
+      .select("title, draft, final_content, platforms")
       .eq("id", contentId)
       .single();
 
-    const body = draft?.final_content ?? draft?.draft;
+    const { data: episodeRow } = !draftRow
+      ? await supabase.from("episodes").select("draft, final_content").eq("id", contentId).single()
+      : { data: null };
+
+    const content = draftRow ?? episodeRow;
+    const body = content?.final_content ?? content?.draft;
     if (!body) {
       return NextResponse.json({ error: "발행할 콘텐츠를 찾을 수 없습니다." }, { status: 404 });
     }
 
     const baseContent = {
-      title: "",
+      title: draftRow?.title ?? "",
       body,
       format: "html" as const,
       tags: [] as string[],
