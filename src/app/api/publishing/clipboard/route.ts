@@ -25,20 +25,29 @@ export async function POST(req: Request) {
 
     const { contentId, platform } = parsed.data;
 
-    const { data: draft } = await supabase
-      .from("episodes")
-      .select("draft, final_content")
+    const { data: draftRow } = await supabase
+      .from("drafts")
+      .select("title, draft, final_content")
       .eq("id", contentId)
       .single();
 
-    const body = draft?.final_content ?? draft?.draft;
+    const { data: episodeRow } = !draftRow
+      ? await supabase
+          .from("episodes")
+          .select("draft, final_content")
+          .eq("id", contentId)
+          .single()
+      : { data: null };
+
+    const content = draftRow ?? episodeRow;
+    const body = content?.final_content ?? content?.draft;
     if (!body) {
       return NextResponse.json({ error: "콘텐츠를 찾을 수 없습니다." }, { status: 404 });
     }
 
     const publisher = getClipboardPublisher(platform);
     const result = publisher.formatForClipboard({
-      title: "",
+      title: draftRow?.title ?? "",
       body,
       format: "html",
       tags: [],
