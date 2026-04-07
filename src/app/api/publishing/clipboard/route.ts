@@ -32,11 +32,7 @@ export async function POST(req: Request) {
       .single();
 
     const { data: episodeRow } = !draftRow
-      ? await supabase
-          .from("episodes")
-          .select("draft, final_content")
-          .eq("id", contentId)
-          .single()
+      ? await supabase.from("episodes").select("draft, final_content").eq("id", contentId).single()
       : { data: null };
 
     const content = draftRow ?? episodeRow;
