@@ -309,6 +309,13 @@ export const automationExecutionResponseSchema = z.object({
 
 export type AutomationExecutionResponse = z.infer<typeof automationExecutionResponseSchema>;
 
+export const automationAiResponseSchema = z.object({
+  content: z.string().min(1),
+  sections: z.record(z.string(), z.string()).optional(),
+});
+
+export type AutomationAiResponse = z.infer<typeof automationAiResponseSchema>;
+
 // ─── Affiliate (수익화 어시스턴트) ──────────────────
 
 export const affiliateAnalyzeRequestSchema = z.object({
