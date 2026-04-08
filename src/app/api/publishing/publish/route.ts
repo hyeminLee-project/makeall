@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { publishRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
+import { decrypt } from "@/lib/crypto";
 import { publishToMultiple } from "@/lib/publisher";
 import type { PlatformCredentials } from "@/lib/publisher";
 import type { Platform } from "@/lib/types";
@@ -20,6 +22,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const parsed = publishRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
     const { contentId, platforms, overrides, scheduledAt } = parsed.data;
 
     if (scheduledAt) {
-      const { error } = await supabase.from("scheduled_publishes").insert({
+      const { error } = await supabaseAdmin.from("scheduled_publishes").insert({
         content_id: contentId,
         platforms,
         overrides: overrides ?? null,
@@ -45,14 +51,18 @@ export async function POST(req: Request) {
     }
 
     // drafts 테이블 먼저 조회, 없으면 episodes 테이블 조회
-    const { data: draftRow } = await supabase
+    const { data: draftRow } = await supabaseAdmin
       .from("drafts")
       .select("title, draft, final_content, platforms")
       .eq("id", contentId)
       .single();
 
     const { data: episodeRow } = !draftRow
-      ? await supabase.from("episodes").select("draft, final_content").eq("id", contentId).single()
+      ? await supabaseAdmin
+          .from("episodes")
+          .select("draft, final_content")
+          .eq("id", contentId)
+          .single()
       : { data: null };
 
     const content = draftRow ?? episodeRow;
@@ -72,24 +82,25 @@ export async function POST(req: Request) {
       platforms,
       baseContent,
       async (platform: Platform): Promise<PlatformCredentials | null> => {
-        const { data } = await supabase
+        const { data } = await supabaseAdmin
           .from("platform_connections")
           .select("credentials_encrypted, site_url")
           .eq("platform", platform)
+          .eq("user_id", userId)
           .eq("is_active", true)
           .single();
 
         if (!data) return null;
 
         return {
-          ...data.credentials_encrypted,
+          ...decrypt(data.credentials_encrypted),
           siteUrl: data.site_url,
         };
       }
     );
 
     for (const result of results) {
-      await supabase.from("publish_history").insert({
+      await supabaseAdmin.from("publish_history").insert({
         content_id: contentId,
         platform: result.platform,
         post_url: result.postUrl ?? null,

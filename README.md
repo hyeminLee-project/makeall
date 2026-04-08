@@ -51,7 +51,7 @@ Write, compose, film, review — all in one place.
 
 ## Getting Started
 
-```bash
+````bash
 # Install dependencies
 bun install
 
@@ -71,11 +71,11 @@ bun run typecheck
 # Lint + Format
 bun run lint
 bun run format
-```
+```bash
 
 ### Environment Variables
 
-```
+```env
 GEMINI_API_KEY=           # Google Gemini API key
 NEXT_PUBLIC_SUPABASE_URL= # Supabase project URL
 SUPABASE_SERVICE_ROLE_KEY= # Supabase service role key
@@ -85,11 +85,11 @@ TELEGRAM_BOT_TOKEN=       # Telegram bot (optional)
 TELEGRAM_WEBHOOK_SECRET=  # Telegram webhook secret (optional)
 DISCORD_BOT_TOKEN=        # Discord bot (optional)
 DISCORD_PUBLIC_KEY=       # Discord public key (optional)
-```
+````
 
 ## Project Structure
 
-```
+```text
 src/
 ├── app/api/
 │   ├── code-review/          # Code review API

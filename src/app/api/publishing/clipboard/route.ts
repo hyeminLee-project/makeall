@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { clipboardRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 import { getClipboardPublisher } from "@/lib/publisher";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
@@ -18,6 +19,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const parsed = clipboardRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -25,14 +30,20 @@ export async function POST(req: Request) {
 
     const { contentId, platform } = parsed.data;
 
-    const { data: draftRow } = await supabase
+    const { data: draftRow } = await supabaseAdmin
       .from("drafts")
       .select("title, draft, final_content")
       .eq("id", contentId)
+      .eq("user_id", userId)
       .single();
 
     const { data: episodeRow } = !draftRow
-      ? await supabase.from("episodes").select("draft, final_content").eq("id", contentId).single()
+      ? await supabaseAdmin
+          .from("episodes")
+          .select("draft, final_content")
+          .eq("id", contentId)
+          .eq("user_id", userId)
+          .single()
       : { data: null };
 
     const content = draftRow ?? episodeRow;

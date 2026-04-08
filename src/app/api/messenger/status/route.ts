@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -16,9 +17,14 @@ export async function GET(req: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
+    const { data, error } = await supabaseAdmin
       .from("messenger_connections")
       .select("id, provider, is_verified, created_at")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {

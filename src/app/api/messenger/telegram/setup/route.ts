@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createRateLimit } from "@/lib/rate-limit";
+import { getAuthUser } from "@/lib/auth";
 import { setWebhook } from "@/lib/messenger/telegram";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 2 });
@@ -15,6 +16,9 @@ export async function POST(req: Request) {
         { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfter / 1000)) } }
       );
     }
+
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
 
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       return NextResponse.json(

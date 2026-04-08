@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { messengerConnectRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 5 });
 
@@ -17,6 +18,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const parsed = messengerConnectRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -26,9 +31,10 @@ export async function POST(req: Request) {
 
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("messenger_connections")
       .insert({
+        user_id: userId,
         provider,
         verification_code: code,
         is_verified: false,

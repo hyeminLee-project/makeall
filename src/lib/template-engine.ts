@@ -26,7 +26,7 @@ export function buildTemplatePrompt({
       if (s.minLength) constraints.push(`최소 ${s.minLength}자`);
       if (s.maxLength) constraints.push(`최대 ${s.maxLength}자`);
       const constraintStr = constraints.length > 0 ? ` (${constraints.join(", ")})` : "";
-      return `${i + 1}. [${s.name}]${s.required ? " (필수)" : " (선택)"}${constraintStr}\n       ${prompt}`;
+      return `${i + 1}. [${sanitizeUserInput(s.name)}]${s.required ? " (필수)" : " (선택)"}${constraintStr}\n       ${prompt}`;
     })
     .join("\n    ");
 
@@ -34,9 +34,13 @@ export function buildTemplatePrompt({
   if (rules.minTotalLength) ruleInstructions.push(`전체 최소 ${rules.minTotalLength}자`);
   if (rules.maxTotalLength) ruleInstructions.push(`전체 최대 ${rules.maxTotalLength}자`);
   if (rules.requiredKeywords.length > 0)
-    ruleInstructions.push(`반드시 포함할 키워드: ${rules.requiredKeywords.join(", ")}`);
+    ruleInstructions.push(
+      `반드시 포함할 키워드: ${rules.requiredKeywords.map((k) => sanitizeUserInput(k)).join(", ")}`
+    );
   if (rules.forbiddenWords.length > 0)
-    ruleInstructions.push(`사용 금지 단어: ${rules.forbiddenWords.join(", ")}`);
+    ruleInstructions.push(
+      `사용 금지 단어: ${rules.forbiddenWords.map((w) => sanitizeUserInput(w)).join(", ")}`
+    );
 
   const sampleBlock = sampleOutput
     ? `\n    [참고 예시]\n    ${sanitizeUserInput(sampleOutput.slice(0, 3000))}`

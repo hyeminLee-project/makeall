@@ -26,7 +26,7 @@ export function buildWritingPrompt({
     - 문장 종결: ${styleProfile.ending}
     - 유머: ${styleProfile.humor}
     - 글 구조: ${styleProfile.structure}
-    - 자주 쓰는 표현: ${styleProfile.expressions.join(", ")}
+    - 자주 쓰는 표현: ${styleProfile.expressions.map((e) => sanitizeUserInput(e)).join(", ")}
     이 문체를 최대한 반영하여 작성해주세요.`
     : "";
 
@@ -169,22 +169,24 @@ export function buildEpisodeGenerationPrompt({
   const characterDesc = characters
     .map((c) => {
       const state = continuity?.characterStates[c.name];
-      const rels = c.relationships.map((r) => `${r.characterName}: ${r.relationship}`).join(", ");
-      return `- ${c.name} (${c.role}): ${c.description}
-      성격: ${c.personality}${rels ? `\n      관계: ${rels}` : ""}${state ? `\n      현재 상태: ${state}` : ""}`;
+      const rels = c.relationships
+        .map((r) => `${sanitizeUserInput(r.characterName)}: ${sanitizeUserInput(r.relationship)}`)
+        .join(", ");
+      return `- ${sanitizeUserInput(c.name)} (${sanitizeUserInput(c.role)}): ${sanitizeUserInput(c.description)}
+      성격: ${sanitizeUserInput(c.personality)}${rels ? `\n      관계: ${rels}` : ""}${state ? `\n      현재 상태: ${sanitizeUserInput(state)}` : ""}`;
     })
     .join("\n    ");
 
   const continuityBlock = continuity
     ? `
     [이전 이야기 요약]
-    ${continuity.previousEpisodesSummary}
+    ${sanitizeUserInput(continuity.previousEpisodesSummary)}
 
     [미해결 복선]
-    ${continuity.unresolvedPlotThreads.map((t) => `- ${t}`).join("\n    ")}
+    ${continuity.unresolvedPlotThreads.map((t) => `- ${sanitizeUserInput(t)}`).join("\n    ")}
 
     [타임라인 위치]
-    ${continuity.timelinePosition}`
+    ${sanitizeUserInput(continuity.timelinePosition)}`
     : "[첫 번째 에피소드입니다]";
 
   const styleGuide = styleProfile
@@ -195,7 +197,7 @@ export function buildEpisodeGenerationPrompt({
     - 문장 종결: ${styleProfile.ending}
     - 유머: ${styleProfile.humor}
     - 글 구조: ${styleProfile.structure}
-    - 자주 쓰는 표현: ${styleProfile.expressions.join(", ")}
+    - 자주 쓰는 표현: ${styleProfile.expressions.map((e) => sanitizeUserInput(e)).join(", ")}
     이 문체를 최대한 반영하여 작성해주세요.`
     : "";
 
@@ -216,7 +218,7 @@ export function buildEpisodeGenerationPrompt({
     [작품 정보]
     제목: ${sanitizeUserInput(title)}
     장르: ${genre}
-    ${tone ? `톤: ${tone}` : ""}
+    ${tone ? `톤: ${sanitizeUserInput(tone)}` : ""}
 
     [세계관]
     ${sanitizeUserInput(setting)}
@@ -262,9 +264,11 @@ export function buildContinuityUpdatePrompt({
   characters: Character[];
   episodeNumber: number;
 }) {
-  const currentSummary = currentContinuity?.previousEpisodesSummary ?? "없음 (첫 에피소드)";
+  const currentSummary = currentContinuity
+    ? sanitizeUserInput(currentContinuity.previousEpisodesSummary)
+    : "없음 (첫 에피소드)";
   const currentThreads = currentContinuity?.unresolvedPlotThreads ?? [];
-  const characterNames = characters.map((c) => c.name).join(", ");
+  const characterNames = characters.map((c) => sanitizeUserInput(c.name)).join(", ");
 
   return `
     다음은 연재 소설의 에피소드 ${episodeNumber}의 완성된 내용입니다.
@@ -274,7 +278,7 @@ export function buildContinuityUpdatePrompt({
     ${currentSummary}
 
     [기존 미해결 복선]
-    ${currentThreads.map((t) => `- ${t}`).join("\n    ") || "없음"}
+    ${currentThreads.map((t) => `- ${sanitizeUserInput(t)}`).join("\n    ") || "없음"}
 
     [에피소드 ${episodeNumber} 내용]
     ${sanitizeUserInput(episodeContent)}

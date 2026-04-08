@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { seriesCreateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -16,6 +17,10 @@ export async function POST(req: Request) {
         { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfter / 1000)) } }
       );
     }
+
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const parsed = seriesCreateRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -33,9 +38,10 @@ export async function POST(req: Request) {
       tone,
     } = parsed.data;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("series")
       .insert({
+        user_id: userId,
         title,
         genre,
         setting,

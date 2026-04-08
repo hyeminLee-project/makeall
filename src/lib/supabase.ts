@@ -6,7 +6,7 @@ function getEnvOrThrow(name: string): string {
   return value;
 }
 
-export const supabase = createClient(
+export const supabaseAdmin = createClient(
   getEnvOrThrow("NEXT_PUBLIC_SUPABASE_URL"),
   getEnvOrThrow("SUPABASE_SERVICE_ROLE_KEY")
 );

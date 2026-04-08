@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod/v4";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
@@ -24,6 +25,10 @@ export async function PUT(
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { seriesId, episodeId } = await params;
 
     const parsed = episodeUpdateSchema.safeParse(await req.json());
@@ -31,7 +36,7 @@ export async function PUT(
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("episodes")
       .update({
         final_content: parsed.data.finalContent,
@@ -40,6 +45,7 @@ export async function PUT(
       })
       .eq("id", episodeId)
       .eq("series_id", seriesId)
+      .eq("user_id", userId)
       .select("id, status, word_count")
       .single();
 

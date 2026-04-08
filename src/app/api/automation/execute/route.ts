@@ -1,8 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 import { buildTemplatePrompt, validateRules } from "@/lib/template-engine";
+import { automationAiResponseSchema } from "@/lib/types";
 import { z } from "zod/v4";
 
 const TIMEOUT_MS = 30_000;
@@ -26,6 +28,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
     }
@@ -37,10 +43,11 @@ export async function POST(req: Request) {
 
     const { templateId, variables } = parsed.data;
 
-    const { data: template, error: templateError } = await supabase
+    const { data: template, error: templateError } = await supabaseAdmin
       .from("automation_templates")
       .select("*")
       .eq("id", templateId)
+      .eq("user_id", userId)
       .single();
 
     if (templateError || !template) {
@@ -69,13 +76,19 @@ export async function POST(req: Request) {
     const text = result.text ?? "";
     const jsonString = text.replace(/```json\n?|```/g, "").trim();
 
-    let content: string;
+    let parsed2: { content: string };
     try {
-      const aiResponse = JSON.parse(jsonString);
-      content = aiResponse.content ?? jsonString;
+      parsed2 = JSON.parse(jsonString);
     } catch {
-      content = jsonString;
+      return NextResponse.json({ error: "AI 응답 파싱에 실패했습니다." }, { status: 502 });
     }
+
+    const aiParsed = automationAiResponseSchema.safeParse(parsed2);
+    if (!aiParsed.success) {
+      return NextResponse.json({ error: "AI 응답 형식이 올바르지 않습니다." }, { status: 502 });
+    }
+
+    const content = aiParsed.data.content;
 
     const ruleValidation = validateRules(content, template.rules);
 
@@ -91,7 +104,8 @@ export async function POST(req: Request) {
       publishedPlatforms.push(...template.rules.platforms);
     }
 
-    await supabase.from("automation_executions").insert({
+    await supabaseAdmin.from("automation_executions").insert({
+      user_id: userId,
       template_id: templateId,
       variables_used: variables,
       content,

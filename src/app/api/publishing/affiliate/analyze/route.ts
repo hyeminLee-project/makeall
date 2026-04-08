@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { affiliateAnalyzeRequestSchema, affiliateAnalyzeResponseSchema } from "@/lib/types";
 import { buildAffiliateAnalysisPrompt } from "@/lib/prompts";
 import { createRateLimit } from "@/lib/rate-limit";
+import { getAuthUser } from "@/lib/auth";
 
 const TIMEOUT_MS = 30_000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
@@ -19,6 +20,9 @@ export async function POST(req: Request) {
         { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfter / 1000)) } }
       );
     }
+
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
