@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { discordInteractionSchema } from "@/lib/types";
 import { getMessenger } from "@/lib/messenger";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     if (interaction.type === 3) {
       const callback = messenger.parseCallback(body);
       if (callback) {
-        await supabase.from("messenger_notifications").insert({
+        await supabaseAdmin.from("messenger_notifications").insert({
           provider: "discord",
           type: "draft_ready",
           draft_id: callback.draftId,

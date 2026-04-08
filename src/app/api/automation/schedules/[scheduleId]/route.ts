@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { scheduleCreateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -21,6 +22,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ schedule
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { scheduleId } = await params;
     const parsed = scheduleCreateRequestSchema.partial().safeParse(await req.json());
     if (!parsed.success) {
@@ -34,10 +39,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ schedule
     if (d.variableData !== undefined) updates.variable_data = d.variableData;
     if (d.isActive !== undefined) updates.is_active = d.isActive;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("automation_schedules")
       .update(updates)
       .eq("id", scheduleId)
+      .eq("user_id", userId)
       .select("id")
       .single();
 
@@ -67,9 +73,17 @@ export async function DELETE(
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { scheduleId } = await params;
 
-    const { error } = await supabase.from("automation_schedules").delete().eq("id", scheduleId);
+    const { error } = await supabaseAdmin
+      .from("automation_schedules")
+      .delete()
+      .eq("id", scheduleId)
+      .eq("user_id", userId);
 
     if (error) {
       console.error("Schedule delete error:", error.message);

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { platformConnectRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
+import { encrypt } from "@/lib/crypto";
 import { getPublisher } from "@/lib/publisher";
 import type { Platform } from "@/lib/types";
 
@@ -24,9 +26,14 @@ export async function GET(req: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
+    const { data, error } = await supabaseAdmin
       .from("platform_connections")
       .select("id, platform, site_url, is_active, connected_at")
+      .eq("user_id", userId)
       .order("connected_at", { ascending: false });
 
     if (error) {
@@ -53,6 +60,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const parsed = platformConnectRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -73,17 +84,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("platform_connections")
       .upsert(
         {
+          user_id: userId,
           platform,
-          credentials_encrypted: credentials,
+          credentials_encrypted: encrypt(credentials),
           site_url: siteUrl ?? null,
           is_active: true,
           connected_at: new Date().toISOString(),
         },
-        { onConflict: "platform" }
+        { onConflict: "user_id,platform" }
       )
       .select("id, platform, is_active")
       .single();

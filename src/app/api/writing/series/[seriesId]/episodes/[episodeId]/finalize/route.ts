@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { continuityUpdateResponseSchema } from "@/lib/types";
 import { buildContinuityUpdatePrompt } from "@/lib/prompts";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const TIMEOUT_MS = 30_000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
@@ -24,13 +25,17 @@ export async function POST(
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
     }
 
     const { seriesId, episodeId } = await params;
 
-    const { data: episode, error: episodeError } = await supabase
+    const { data: episode, error: episodeError } = await supabaseAdmin
       .from("episodes")
       .select("*")
       .eq("id", episodeId)
@@ -46,10 +51,11 @@ export async function POST(
       return NextResponse.json({ error: "에피소드 내용이 비어있습니다." }, { status: 400 });
     }
 
-    const { data: series, error: seriesError } = await supabase
+    const { data: series, error: seriesError } = await supabaseAdmin
       .from("series")
       .select("characters, continuity_state")
       .eq("id", seriesId)
+      .eq("user_id", userId)
       .single();
 
     if (seriesError || !series) {
@@ -110,7 +116,7 @@ export async function POST(
       seriesUpdate.reference_style = content.slice(0, 2000);
     }
 
-    const { error: updateSeriesError } = await supabase
+    const { error: updateSeriesError } = await supabaseAdmin
       .from("series")
       .update(seriesUpdate)
       .eq("id", seriesId);
@@ -120,7 +126,7 @@ export async function POST(
       return NextResponse.json({ error: "연속성 상태 저장에 실패했습니다." }, { status: 500 });
     }
 
-    const { error: updateEpisodeError } = await supabase
+    const { error: updateEpisodeError } = await supabaseAdmin
       .from("episodes")
       .update({ status: "finalized", finalized_at: new Date().toISOString() })
       .eq("id", episodeId);

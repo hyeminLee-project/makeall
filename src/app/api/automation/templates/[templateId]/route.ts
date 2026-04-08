@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { templateCreateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -12,12 +13,17 @@ function getIp(req: Request) {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ templateId: string }> }) {
   try {
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { templateId } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("automation_templates")
       .select("*")
       .eq("id", templateId)
+      .eq("user_id", userId)
       .single();
 
     if (error || !data) {
@@ -43,6 +49,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ template
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { templateId } = await params;
     const parsed = templateCreateRequestSchema.partial().safeParse(await req.json());
     if (!parsed.success) {
@@ -60,10 +70,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ template
     if (d.styleProfileId !== undefined) updates.style_profile_id = d.styleProfileId;
     if (d.sampleOutput !== undefined) updates.sample_output = d.sampleOutput;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("automation_templates")
       .update(updates)
       .eq("id", templateId)
+      .eq("user_id", userId)
       .select("id, updated_at")
       .single();
 
@@ -93,9 +104,17 @@ export async function DELETE(
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { templateId } = await params;
 
-    const { error } = await supabase.from("automation_templates").delete().eq("id", templateId);
+    const { error } = await supabaseAdmin
+      .from("automation_templates")
+      .delete()
+      .eq("id", templateId)
+      .eq("user_id", userId);
 
     if (error) {
       console.error("Template delete error:", error.message);

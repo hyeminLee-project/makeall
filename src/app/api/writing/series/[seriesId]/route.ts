@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { seriesCreateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -23,19 +24,24 @@ function checkRateLimit(ip: string) {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ seriesId: string }> }) {
   try {
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const { seriesId } = await params;
 
-    const { data: series, error } = await supabase
+    const { data: series, error } = await supabaseAdmin
       .from("series")
       .select("*")
       .eq("id", seriesId)
+      .eq("user_id", userId)
       .single();
 
     if (error || !series) {
       return NextResponse.json({ error: "시리즈를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    const { data: episodes } = await supabase
+    const { data: episodes } = await supabaseAdmin
       .from("episodes")
       .select("id, episode_number, status, word_count, created_at, finalized_at")
       .eq("series_id", seriesId)
@@ -54,6 +60,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ seriesId
     const ip = getIp(req);
     const rateLimitResponse = checkRateLimit(ip);
     if (rateLimitResponse) return rateLimitResponse;
+
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
 
     const { seriesId } = await params;
 
@@ -84,10 +94,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ seriesId
     if (styleProfileId !== undefined) updates.style_profile_id = styleProfileId;
     if (tone !== undefined) updates.tone = tone;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("series")
       .update(updates)
       .eq("id", seriesId)
+      .eq("user_id", userId)
       .select("id, updated_at")
       .single();
 

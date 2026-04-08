@@ -1,8 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 import { buildTemplatePrompt } from "@/lib/template-engine";
+import { automationAiResponseSchema } from "@/lib/types";
 import { z } from "zod/v4";
 
 const TIMEOUT_MS = 30_000;
@@ -25,6 +27,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ templat
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
     }
@@ -35,10 +41,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ templat
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { data: template, error: templateError } = await supabase
+    const { data: template, error: templateError } = await supabaseAdmin
       .from("automation_templates")
       .select("*")
       .eq("id", templateId)
+      .eq("user_id", userId)
       .single();
 
     if (templateError || !template) {
@@ -67,15 +74,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ templat
     const text = result.text ?? "";
     const jsonString = text.replace(/```json\n?|```/g, "").trim();
 
-    let content: string;
+    let rawParsed: unknown;
     try {
-      const parsed = JSON.parse(jsonString);
-      content = parsed.content ?? jsonString;
+      rawParsed = JSON.parse(jsonString);
     } catch {
-      content = jsonString;
+      return NextResponse.json({ error: "AI 응답 파싱에 실패했습니다." }, { status: 502 });
     }
 
-    return NextResponse.json({ content, preview: true });
+    const aiParsed = automationAiResponseSchema.safeParse(rawParsed);
+    if (!aiParsed.success) {
+      return NextResponse.json({ error: "AI 응답 형식이 올바르지 않습니다." }, { status: 502 });
+    }
+
+    return NextResponse.json({ content: aiParsed.data.content, preview: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Template Preview Error:", message);

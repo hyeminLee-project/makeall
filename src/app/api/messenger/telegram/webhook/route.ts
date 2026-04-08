@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { telegramUpdateSchema } from "@/lib/types";
 import { getMessenger } from "@/lib/messenger";
 import { answerCallbackQuery } from "@/lib/messenger/telegram";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       const chatId = update.message.chat.id;
       const userId = update.message.from.id;
 
-      const { data } = await supabase
+      const { data } = await supabaseAdmin
         .from("messenger_connections")
         .select("id")
         .eq("verification_code", code)
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         .single();
 
       if (data) {
-        await supabase
+        await supabaseAdmin
           .from("messenger_connections")
           .update({
             chat_id: String(chatId),
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       if (callback) {
         const chatId = update.callback_query.message?.chat.id;
         if (chatId) {
-          await supabase.from("messenger_notifications").insert({
+          await supabaseAdmin.from("messenger_notifications").insert({
             provider: "telegram",
             type: "draft_ready",
             draft_id: callback.draftId,

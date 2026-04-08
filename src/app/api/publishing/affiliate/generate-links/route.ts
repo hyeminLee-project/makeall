@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { affiliateGenerateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
+import { getAuthUser } from "@/lib/auth";
 import { searchProducts, buildAffiliateUrl, insertLinksIntoDraft } from "@/lib/affiliate/coupang";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 10 });
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
         { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfter / 1000)) } }
       );
     }
+
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
 
     if (!process.env.COUPANG_ACCESS_KEY || !process.env.COUPANG_SECRET_KEY) {
       return NextResponse.json(

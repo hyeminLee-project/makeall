@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { scheduleCreateRequestSchema } from "@/lib/types";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
@@ -21,9 +22,14 @@ export async function GET(req: Request) {
       );
     }
 
-    const { data, error } = await supabase
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
+    const { data, error } = await supabaseAdmin
       .from("automation_schedules")
       .select("*, automation_templates(name, category)")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -50,6 +56,10 @@ export async function POST(req: Request) {
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     const parsed = scheduleCreateRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
@@ -57,7 +67,7 @@ export async function POST(req: Request) {
 
     const { templateId, cron, timezone, variableData, isActive } = parsed.data;
 
-    const { data: template } = await supabase
+    const { data: template } = await supabaseAdmin
       .from("automation_templates")
       .select("id")
       .eq("id", templateId)
@@ -67,9 +77,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "템플릿을 찾을 수 없습니다." }, { status: 404 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("automation_schedules")
       .insert({
+        user_id: userId,
         template_id: templateId,
         cron,
         timezone,

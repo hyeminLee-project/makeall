@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { episodeGenerateRequestSchema, episodeGenerateResponseSchema } from "@/lib/types";
 import { buildEpisodeGenerationPrompt } from "@/lib/prompts";
 import { createRateLimit } from "@/lib/rate-limit";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
+import { getAuthUser } from "@/lib/auth";
 
 const TIMEOUT_MS = 60_000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
@@ -21,6 +22,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ seriesI
       );
     }
 
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
     }
@@ -32,10 +37,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ seriesI
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { data: series, error: seriesError } = await supabase
+    const { data: series, error: seriesError } = await supabaseAdmin
       .from("series")
       .select("*")
       .eq("id", seriesId)
+      .eq("user_id", userId)
       .single();
 
     if (seriesError || !series) {
@@ -98,7 +104,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ seriesI
 
     const episode = responseParsed.data;
 
-    const { data: episodeData, error: insertError } = await supabase
+    const { data: episodeData, error: insertError } = await supabaseAdmin
       .from("episodes")
       .insert({
         series_id: seriesId,
