@@ -79,15 +79,24 @@ export function buildAffiliateUrl(productUrl: string, subId?: string): string {
   return url.toString();
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export function insertLinksIntoDraft(
   draft: string,
   links: { anchorText: string; url: string; position: { paragraphIndex: number } }[]
 ): string {
   const paragraphs = draft.split("\n\n");
 
-  const sortedLinks = [...links].sort(
-    (a, b) => b.position.paragraphIndex - a.position.paragraphIndex
-  );
+  const sortedLinks = [...links]
+    .filter((link) => isSafeUrl(link.url))
+    .sort((a, b) => b.position.paragraphIndex - a.position.paragraphIndex);
 
   for (const link of sortedLinks) {
     const idx = link.position.paragraphIndex;
