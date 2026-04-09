@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 import { buildTemplatePrompt } from "@/lib/template-engine";
@@ -17,8 +17,7 @@ const previewRequestSchema = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ templateId: string }> }) {
   try {
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(

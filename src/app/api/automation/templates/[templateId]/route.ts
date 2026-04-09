@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { templateCreateRequestSchema } from "@/lib/types";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
-
-function getIp(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  return forwarded ? forwarded.split(",")[0].trim() : "anonymous";
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ templateId: string }> }) {
   try {
@@ -40,7 +35,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ templat
 
 export async function PUT(req: Request, { params }: { params: Promise<{ templateId: string }> }) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(
@@ -95,7 +90,7 @@ export async function DELETE(
   { params }: { params: Promise<{ templateId: string }> }
 ) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(

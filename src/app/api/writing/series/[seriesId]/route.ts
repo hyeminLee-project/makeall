@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { seriesCreateRequestSchema } from "@/lib/types";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
-
-function getIp(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  return forwarded ? forwarded.split(",")[0].trim() : "anonymous";
-}
 
 function checkRateLimit(ip: string) {
   const { success, retryAfter } = limiter.check(ip);
@@ -57,7 +52,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ seriesI
 
 export async function PUT(req: Request, { params }: { params: Promise<{ seriesId: string }> }) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
     const rateLimitResponse = checkRateLimit(ip);
     if (rateLimitResponse) return rateLimitResponse;
 

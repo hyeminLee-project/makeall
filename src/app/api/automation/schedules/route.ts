@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import { scheduleCreateRequestSchema } from "@/lib/types";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
-function getIp(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  return forwarded ? forwarded.split(",")[0].trim() : "anonymous";
-}
-
 export async function GET(req: Request) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(
@@ -26,18 +21,19 @@ export async function GET(req: Request) {
     if (auth instanceof NextResponse) return auth;
     const { userId } = auth;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error, count } = await supabaseAdmin
       .from("automation_schedules")
-      .select("*, automation_templates(name, category)")
+      .select("*, automation_templates(name, category)", { count: "exact" })
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, 49);
 
     if (error) {
       console.error("Schedule list error:", error.message);
       return NextResponse.json({ error: "스케줄 목록 조회에 실패했습니다." }, { status: 500 });
     }
 
-    return NextResponse.json({ schedules: data ?? [] });
+    return NextResponse.json({ schedules: data ?? [], total: count ?? 0 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Schedules GET Error:", message);
@@ -47,7 +43,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 import { z } from "zod/v4";
@@ -15,8 +15,7 @@ export async function PUT(
   { params }: { params: Promise<{ seriesId: string; episodeId: string }> }
 ) {
   try {
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(

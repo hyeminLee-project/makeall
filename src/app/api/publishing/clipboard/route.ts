@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { clipboardRequestSchema } from "@/lib/types";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 import { getClipboardPublisher } from "@/lib/publisher";
@@ -9,8 +9,7 @@ const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
 export async function POST(req: Request) {
   try {
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(
