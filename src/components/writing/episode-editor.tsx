@@ -50,15 +50,12 @@ export function EpisodeEditor({
     [seriesId, episodeId]
   );
 
-  const finalizeAction = useCallback(
-    async () => {
-      return apiClient<{ status: string }>(
-        `/api/writing/series/${seriesId}/episodes/${episodeId}/finalize`,
-        { method: "POST" }
-      );
-    },
-    [seriesId, episodeId]
-  );
+  const finalizeAction = useCallback(async () => {
+    return apiClient<{ status: string }>(
+      `/api/writing/series/${seriesId}/episodes/${episodeId}/finalize`,
+      { method: "POST" }
+    );
+  }, [seriesId, episodeId]);
 
   const {
     execute: executeSave,
