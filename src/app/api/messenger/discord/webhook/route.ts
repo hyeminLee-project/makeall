@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = discordInteractionSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn("Discord webhook parse failed:", parsed.error.message);
       return NextResponse.json({ type: 1 });
     }
 
@@ -27,23 +28,29 @@ export async function POST(req: Request) {
     // MESSAGE_COMPONENT — 버튼 클릭
     if (interaction.type === 3) {
       const callback = messenger.parseCallback(body);
-      if (callback) {
-        await supabaseAdmin.from("messenger_notifications").insert({
-          provider: "discord",
-          type: "draft_ready",
-          draft_id: callback.draftId,
-          response_action: callback.action,
-          responded_at: new Date().toISOString(),
-        });
-
-        return NextResponse.json({
-          type: 4,
-          data: {
-            content:
-              callback.action === "approve" ? "✅ 승인 완료!" : `📌 ${callback.action} 처리 완료`,
-          },
-        });
+      if (!callback) {
+        console.warn("Discord callback parse returned null:", JSON.stringify(body.data?.custom_id));
+        return NextResponse.json({ type: 1 });
       }
+
+      const { error: insertError } = await supabaseAdmin.from("messenger_notifications").insert({
+        provider: "discord",
+        type: "draft_ready",
+        draft_id: callback.draftId,
+        response_action: callback.action,
+        responded_at: new Date().toISOString(),
+      });
+      if (insertError) {
+        console.error("Discord notification insert failed:", insertError.message);
+      }
+
+      return NextResponse.json({
+        type: 4,
+        data: {
+          content:
+            callback.action === "approve" ? "✅ 승인 완료!" : `📌 ${callback.action} 처리 완료`,
+        },
+      });
     }
 
     return NextResponse.json({ type: 1 });

@@ -6,6 +6,37 @@ import { z } from "zod/v4";
 
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 20 });
 
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ seriesId: string; episodeId: string }> }
+) {
+  try {
+    const auth = await getAuthUser();
+    if (auth instanceof NextResponse) return auth;
+    const { userId } = auth;
+
+    const { seriesId, episodeId } = await params;
+
+    const { data, error } = await supabaseAdmin
+      .from("episodes")
+      .select("*")
+      .eq("id", episodeId)
+      .eq("series_id", seriesId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "에피소드를 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Episode GET API Error:", message);
+    return NextResponse.json({ error: "에피소드 조회 중 오류가 발생했습니다." }, { status: 500 });
+  }
+}
+
 const episodeUpdateSchema = z.object({
   finalContent: z.string().min(1).max(100000),
 });
