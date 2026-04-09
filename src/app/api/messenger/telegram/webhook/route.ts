@@ -54,28 +54,29 @@ export async function POST(req: Request) {
 
     if (update.callback_query) {
       const callback = messenger.parseCallback(body);
-      if (callback) {
-        const chatId = update.callback_query.message?.chat.id;
-        if (chatId) {
-          const { error: insertError } = await supabaseAdmin
-            .from("messenger_notifications")
-            .insert({
-              provider: "telegram",
-              type: "draft_ready",
-              draft_id: callback.draftId,
-              response_action: callback.action,
-              responded_at: new Date().toISOString(),
-            });
-          if (insertError) {
-            console.error("Telegram notification insert failed:", insertError.message);
-          }
-        }
-
-        await answerCallbackQuery(
-          update.callback_query.id,
-          callback.action === "approve" ? "승인 완료!" : "처리 완료"
-        );
+      if (!callback) {
+        console.warn("Telegram callback parse returned null:", update.callback_query.id);
+        return NextResponse.json({ ok: true });
       }
+
+      const chatId = update.callback_query.message?.chat.id;
+      if (chatId) {
+        const { error: insertError } = await supabaseAdmin.from("messenger_notifications").insert({
+          provider: "telegram",
+          type: "draft_ready",
+          draft_id: callback.draftId,
+          response_action: callback.action,
+          responded_at: new Date().toISOString(),
+        });
+        if (insertError) {
+          console.error("Telegram notification insert failed:", insertError.message);
+        }
+      }
+
+      await answerCallbackQuery(
+        update.callback_query.id,
+        callback.action === "approve" ? "승인 완료!" : "처리 완료"
+      );
 
       return NextResponse.json({ ok: true });
     }
