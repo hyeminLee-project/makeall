@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { episodeGenerateRequestSchema, episodeGenerateResponseSchema } from "@/lib/types";
 import { buildEpisodeGenerationPrompt } from "@/lib/prompts";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 
@@ -12,8 +12,7 @@ const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 3 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ seriesId: string }> }) {
   try {
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(

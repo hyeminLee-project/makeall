@@ -323,7 +323,17 @@ export type TemplateCreateRequest = z.infer<typeof templateCreateRequestSchema>;
 
 export const scheduleCreateRequestSchema = z.object({
   templateId: z.uuid(),
-  cron: z.string().min(1).max(100),
+  cron: z
+    .string()
+    .min(1)
+    .max(100)
+    .refine(
+      (v) =>
+        /^(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)$/.test(
+          v.trim()
+        ),
+      { message: "유효한 cron 표현식이 아닙니다 (예: '0 9 * * 1')" }
+    ),
   timezone: z.string().default("Asia/Seoul"),
   variableData: z.array(z.record(z.string(), z.string())).nullable().default(null),
   isActive: z.boolean().default(true),
