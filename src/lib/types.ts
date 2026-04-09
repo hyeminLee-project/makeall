@@ -128,6 +128,56 @@ export const videoRequestSchema = z.object({
 
 export type VideoRequest = z.infer<typeof videoRequestSchema>;
 
+// ─── Writing Types (글 유형) ─────────────────────────
+
+export const writingTypeEnum = z.enum(["serial", "essay", "column", "short_story"]);
+export type WritingType = z.infer<typeof writingTypeEnum>;
+
+export const genreEnum = z.enum([
+  "fantasy",
+  "romance",
+  "thriller",
+  "sf",
+  "horror",
+  "slice_of_life",
+  "historical",
+]);
+
+export const essayMetadataSchema = z.object({
+  topic: z.string().min(1).max(2000),
+  keywords: z.array(z.string().max(100)).min(1).max(20),
+  referenceMaterials: z.string().max(5000).optional(),
+});
+
+export type EssayMetadata = z.infer<typeof essayMetadataSchema>;
+
+export const columnMetadataSchema = z.object({
+  topic: z.string().min(1).max(2000),
+  argument: z.string().min(1).max(3000),
+  targetAudience: z.string().max(500),
+});
+
+export type ColumnMetadata = z.infer<typeof columnMetadataSchema>;
+
+export const shortStoryMetadataSchema = z.object({
+  genre: genreEnum,
+  setting: z.string().min(1).max(3000),
+  targetLength: z.number().min(500).max(30000).default(5000),
+});
+
+export type ShortStoryMetadata = z.infer<typeof shortStoryMetadataSchema>;
+
+export const quickStartRequestSchema = z.object({
+  idea: z.string().min(1).max(500),
+  writingType: writingTypeEnum,
+});
+
+export const quickStartResponseSchema = z.object({
+  title: z.string(),
+  tone: z.string().optional(),
+  settings: z.record(z.string(), z.unknown()),
+});
+
 // ─── Serial Novel (연재 소설) ────────────────────────
 
 export const characterSchema = z.object({
@@ -150,7 +200,7 @@ export type Character = z.infer<typeof characterSchema>;
 
 export const seriesCreateRequestSchema = z.object({
   title: z.string().min(1).max(200),
-  genre: z.enum(["fantasy", "romance", "thriller", "sf", "horror", "slice_of_life", "historical"]),
+  genre: genreEnum,
   setting: z.string().min(1).max(5000),
   characters: z.array(characterSchema).min(1).max(20),
   plotOutline: z.string().min(1).max(10000),
@@ -198,6 +248,46 @@ export const continuityUpdateResponseSchema = z.object({
   unresolvedPlotThreads: z.array(z.string()),
   timelinePosition: z.string(),
 });
+
+// ─── Project Create (통합 프로젝트 생성) ─────────────
+
+const projectBaseSchema = z.object({
+  title: z.string().min(1).max(200),
+  tone: z.string().max(500).optional(),
+  referenceStyle: z.string().max(2000).nullable().optional(),
+});
+
+export const essayCreateRequestSchema = projectBaseSchema.extend({
+  writingType: z.literal("essay"),
+  metadata: essayMetadataSchema,
+});
+
+export const columnCreateRequestSchema = projectBaseSchema.extend({
+  writingType: z.literal("column"),
+  metadata: columnMetadataSchema,
+});
+
+export const shortStoryCreateRequestSchema = projectBaseSchema.extend({
+  writingType: z.literal("short_story"),
+  metadata: shortStoryMetadataSchema,
+});
+
+export const projectCreateRequestSchema = z.discriminatedUnion("writingType", [
+  seriesCreateRequestSchema.extend({ writingType: z.literal("serial") }),
+  essayCreateRequestSchema,
+  columnCreateRequestSchema,
+  shortStoryCreateRequestSchema,
+]);
+
+export type ProjectCreateRequest = z.infer<typeof projectCreateRequestSchema>;
+
+export const draftGenerateResponseSchema = z.object({
+  draft: z.string().min(1),
+  wordCount: z.number(),
+  suggestions: z.array(z.string()),
+});
+
+export type DraftGenerateResponse = z.infer<typeof draftGenerateResponseSchema>;
 
 // ─── Publishing Hub ─────────────────────────────────
 
