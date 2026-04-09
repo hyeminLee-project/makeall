@@ -1,6 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { messengerConnectRequestSchema } from "@/lib/types";
-import { createRateLimit } from "@/lib/rate-limit";
+import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 
@@ -8,8 +9,7 @@ const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 5 });
 
 export async function POST(req: Request) {
   try {
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "anonymous";
+    const ip = getClientIp(req);
     const { success, retryAfter } = limiter.check(ip);
     if (!success) {
       return NextResponse.json(
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const { provider } = parsed.data;
 
-    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const code = randomBytes(4).toString("hex").toUpperCase();
 
     const { data, error } = await supabaseAdmin
       .from("messenger_connections")
