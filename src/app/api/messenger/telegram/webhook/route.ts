@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = telegramUpdateSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn("Telegram webhook parse failed:", parsed.error.message);
       return NextResponse.json({ ok: true });
     }
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
         .single();
 
       if (data) {
-        await supabaseAdmin
+        const { error: updateError } = await supabaseAdmin
           .from("messenger_connections")
           .update({
             chat_id: String(chatId),
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
             verification_code: null,
           })
           .eq("id", data.id);
+        if (updateError) {
+          console.error("Telegram verification update failed:", updateError.message);
+        }
       }
 
       return NextResponse.json({ ok: true });
@@ -53,13 +57,18 @@ export async function POST(req: Request) {
       if (callback) {
         const chatId = update.callback_query.message?.chat.id;
         if (chatId) {
-          await supabaseAdmin.from("messenger_notifications").insert({
-            provider: "telegram",
-            type: "draft_ready",
-            draft_id: callback.draftId,
-            response_action: callback.action,
-            responded_at: new Date().toISOString(),
-          });
+          const { error: insertError } = await supabaseAdmin
+            .from("messenger_notifications")
+            .insert({
+              provider: "telegram",
+              type: "draft_ready",
+              draft_id: callback.draftId,
+              response_action: callback.action,
+              responded_at: new Date().toISOString(),
+            });
+          if (insertError) {
+            console.error("Telegram notification insert failed:", insertError.message);
+          }
         }
 
         await answerCallbackQuery(

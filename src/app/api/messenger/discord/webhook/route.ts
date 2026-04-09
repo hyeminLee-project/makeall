@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = discordInteractionSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn("Discord webhook parse failed:", parsed.error.message);
       return NextResponse.json({ type: 1 });
     }
 
@@ -28,13 +29,18 @@ export async function POST(req: Request) {
     if (interaction.type === 3) {
       const callback = messenger.parseCallback(body);
       if (callback) {
-        await supabaseAdmin.from("messenger_notifications").insert({
-          provider: "discord",
-          type: "draft_ready",
-          draft_id: callback.draftId,
-          response_action: callback.action,
-          responded_at: new Date().toISOString(),
-        });
+        const { error: insertError } = await supabaseAdmin
+          .from("messenger_notifications")
+          .insert({
+            provider: "discord",
+            type: "draft_ready",
+            draft_id: callback.draftId,
+            response_action: callback.action,
+            responded_at: new Date().toISOString(),
+          });
+        if (insertError) {
+          console.error("Discord notification insert failed:", insertError.message);
+        }
 
         return NextResponse.json({
           type: 4,
