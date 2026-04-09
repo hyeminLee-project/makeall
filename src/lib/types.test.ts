@@ -60,10 +60,28 @@ describe("codeReviewRequestSchema", () => {
       expect(result.data.focus).toEqual(["all"]);
     }
   });
+
+  it("accepts new focus values", () => {
+    for (const focus of ["maintainability", "logic", "comprehension"]) {
+      const result = codeReviewRequestSchema.safeParse({
+        code: "const x = 1;",
+        focus: [focus],
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("accepts mixed old and new focus values", () => {
+    const result = codeReviewRequestSchema.safeParse({
+      code: "const x = 1;",
+      focus: ["security", "comprehension", "logic"],
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("codeReviewResponseSchema", () => {
-  it("accepts valid response", () => {
+  it("accepts minimal response (backward compat)", () => {
     const result = codeReviewResponseSchema.safeParse({
       summary: "Good code",
       issues: [{ severity: "warning", message: "Unused variable", line: 1 }],
@@ -77,6 +95,74 @@ describe("codeReviewResponseSchema", () => {
       summary: "Good",
       issues: [],
       score: 150,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts issue with category, explanation, fixPrompt", () => {
+    const result = codeReviewResponseSchema.safeParse({
+      summary: "리뷰 완료",
+      issues: [
+        {
+          line: 5,
+          severity: "warning",
+          category: "comprehension",
+          message: "매직 넘버 사용",
+          explanation: "30000이라는 숫자의 의미가 불명확합니다.",
+          suggestion: "상수로 추출하세요",
+          fixPrompt: "line 5의 30000을 TIMEOUT_MS 상수로 추출",
+        },
+      ],
+      score: 70,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts full response with all new fields", () => {
+    const result = codeReviewResponseSchema.safeParse({
+      summary: "전체 요약",
+      issues: [],
+      score: 90,
+      categoryScores: [
+        { category: "maintainability", score: 95, summary: "양호" },
+        { category: "security", score: 80, summary: "개선 필요" },
+      ],
+      comprehensionQuestions: [
+        {
+          question: "이 함수에서 Promise.race를 사용한 이유는?",
+          targetLines: [12, 15],
+          difficulty: "intermediate",
+        },
+      ],
+      comprehensionRisks: [
+        {
+          section: "lines 10-20",
+          riskLevel: "high",
+          reason: "복잡한 정규식이 설명 없이 사용됨",
+          blackBoxPatterns: ["unexplained regex"],
+        },
+      ],
+      overallComprehensionLevel: "B1",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("validates comprehension difficulty enum", () => {
+    const result = codeReviewResponseSchema.safeParse({
+      summary: "test",
+      issues: [],
+      score: 50,
+      comprehensionQuestions: [{ question: "q", difficulty: "invalid" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("validates overallComprehensionLevel enum", () => {
+    const result = codeReviewResponseSchema.safeParse({
+      summary: "test",
+      issues: [],
+      score: 50,
+      overallComprehensionLevel: "D1",
     });
     expect(result.success).toBe(false);
   });

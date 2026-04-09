@@ -5,7 +5,7 @@ import { buildCodeReviewPrompt } from "@/lib/prompts";
 import { createRateLimit } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/auth";
 
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 45_000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 10 });
 
