@@ -8,6 +8,7 @@ interface Series {
   id: string;
   title: string;
   genre: string;
+  writing_type: string;
   status: string;
   updated_at: string;
 }
@@ -31,20 +32,20 @@ export default async function WritingPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Writing Studio</h1>
-          <p className="text-muted-foreground mt-1 text-sm">AI와 함께 연재 소설을 써보세요.</p>
+          <p className="text-muted-foreground mt-1 text-sm">AI와 함께 글을 써보세요.</p>
         </div>
         <Link href="/writing/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" />새 시리즈
+            <Plus className="mr-2 h-4 w-4" />새 프로젝트
           </Button>
         </Link>
       </div>
 
       {series.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="text-muted-foreground">아직 시리즈가 없습니다.</p>
+          <p className="text-muted-foreground">아직 프로젝트가 없습니다.</p>
           <Link href="/writing/new" className="mt-4">
-            <Button variant="outline">첫 시리즈 만들기</Button>
+            <Button variant="outline">첫 프로젝트 만들기</Button>
           </Link>
         </div>
       ) : (
@@ -55,6 +56,7 @@ export default async function WritingPage() {
               id={s.id}
               title={s.title}
               genre={s.genre}
+              writingType={s.writing_type}
               updatedAt={s.updated_at}
             />
           ))}
