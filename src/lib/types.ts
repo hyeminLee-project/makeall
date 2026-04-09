@@ -39,25 +39,69 @@ export type StyleProfile = z.infer<typeof styleProfileSchema>;
 
 // ─── Code Review ─────────────────────────────────────
 
+export const codeReviewFocusEnum = z.enum([
+  "security",
+  "performance",
+  "readability",
+  "maintainability",
+  "logic",
+  "comprehension",
+  "all",
+]);
+
 export const codeReviewRequestSchema = z.object({
   code: z.string().min(1).max(50000),
   language: z.string().default("typescript"),
-  focus: z.array(z.enum(["security", "performance", "readability", "all"])).default(["all"]),
+  focus: z.array(codeReviewFocusEnum).default(["all"]),
 });
 
 export type CodeReviewRequest = z.infer<typeof codeReviewRequestSchema>;
 
+export const codeReviewCategoryEnum = z.enum([
+  "maintainability",
+  "understanding",
+  "logic",
+  "security",
+  "comprehension",
+]);
+
+export const codeReviewIssueSchema = z.object({
+  line: z.number().optional(),
+  severity: z.enum(["critical", "warning", "info"]),
+  message: z.string(),
+  suggestion: z.string().optional(),
+  category: codeReviewCategoryEnum.optional(),
+  explanation: z.string().optional(),
+  fixPrompt: z.string().optional(),
+});
+
+export const comprehensionQuestionSchema = z.object({
+  question: z.string(),
+  targetLines: z.array(z.number()).optional(),
+  difficulty: z.enum(["basic", "intermediate", "advanced"]),
+});
+
+export const comprehensionRiskSchema = z.object({
+  section: z.string(),
+  riskLevel: z.enum(["low", "medium", "high"]),
+  reason: z.string(),
+  blackBoxPatterns: z.array(z.string()).optional(),
+});
+
+export const categoryScoreSchema = z.object({
+  category: codeReviewCategoryEnum,
+  score: z.number().min(0).max(100),
+  summary: z.string(),
+});
+
 export const codeReviewResponseSchema = z.object({
   summary: z.string(),
-  issues: z.array(
-    z.object({
-      line: z.number().optional(),
-      severity: z.enum(["critical", "warning", "info"]),
-      message: z.string(),
-      suggestion: z.string().optional(),
-    })
-  ),
+  issues: z.array(codeReviewIssueSchema),
   score: z.number().min(0).max(100),
+  categoryScores: z.array(categoryScoreSchema).optional(),
+  comprehensionQuestions: z.array(comprehensionQuestionSchema).optional(),
+  comprehensionRisks: z.array(comprehensionRiskSchema).optional(),
+  overallComprehensionLevel: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]).optional(),
 });
 
 export type CodeReviewResponse = z.infer<typeof codeReviewResponseSchema>;

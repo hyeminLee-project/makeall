@@ -74,6 +74,20 @@ export function buildWritingPrompt({
   `;
 }
 
+const FOCUS_TO_CRITERIA: Record<string, string[]> = {
+  all: ["maintainability", "understanding", "logic", "security", "comprehension"],
+  security: ["security"],
+  performance: ["logic"],
+  readability: ["maintainability"],
+  maintainability: ["maintainability"],
+  logic: ["logic"],
+  comprehension: ["comprehension", "understanding"],
+};
+
+function mapFocusToCriteria(focus: string[]): string[] {
+  return [...new Set(focus.flatMap((f) => FOCUS_TO_CRITERIA[f] ?? [f]))];
+}
+
 export function buildCodeReviewPrompt({
   code,
   language,
@@ -83,32 +97,108 @@ export function buildCodeReviewPrompt({
   language: string;
   focus: string[];
 }) {
-  const focusDesc = focus.includes("all") ? "보안, 성능, 가독성 전체" : focus.join(", ");
+  const criteria = mapFocusToCriteria(focus);
+  const criteriaDesc = criteria
+    .map((c) => {
+      switch (c) {
+        case "maintainability":
+          return `1. 코드 유지보수성 (maintainability)
+       - 변수/함수 네이밍이 의도를 명확히 전달하는가
+       - 함수 분리, 단일 책임 원칙 준수
+       - dead code, eslint-disable 남용, 불필요한 주석
+       - 중복 코드, 과도한 중첩`;
+        case "understanding":
+          return `2. 코드 이해도 향상 (understanding)
+       - 복잡한 로직에 "왜 이렇게 했는지" 설명이 필요한 부분
+       - 비자명한 알고리즘이나 패턴에 대한 문서화 필요성
+       - 코드를 처음 보는 개발자가 이해할 수 있는 수준인가`;
+        case "logic":
+          return `3. 로직 정확성 (logic)
+       - 조건문 오류, off-by-one, 잘못된 흐름 제어
+       - edge case 누락 (null, undefined, 빈 배열, 경계값)
+       - 비동기 처리 오류, race condition, 에러 핸들링 누락`;
+        case "security":
+          return `4. 보안 취약점 (security)
+       - 인증/인가 누락, API 키 하드코딩
+       - 입력 검증 미비, injection 가능성 (SQL, XSS, command)
+       - 민감 데이터 로깅, 불안전한 의존성 사용`;
+        case "comprehension":
+          return `5. 코드 이해도 검증 (comprehension) — 핵심 기준
+       - 작성자가 이 코드를 직접 설명할 수 있는가?
+       - "블랙박스" 패턴 탐지: eslint-disable, magic numbers, 설명 없는 정규식, 복잡한 체이닝
+       - 복사-붙여넣기로 추정되는 코드 (이해 없이 사용한 패턴)
+       - 요구사항 변경 시 어디를 수정해야 하는지 작성자가 파악 가능한가
+       - 작성자에게 물어볼 comprehension questions를 생성하세요`;
+        default:
+          return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n\n    ");
 
   return `
-    당신은 시니어 소프트웨어 엔지니어입니다.
-    다음 ${language} 코드를 리뷰해주세요.
+    당신은 시니어 소프트웨어 엔지니어이자 코드 교육자입니다.
+    다음 ${language} 코드를 아래 평가 기준에 따라 리뷰해주세요.
+    특히 바이브 코딩(AI 생성 코드)의 "이해 부채(Comprehension Debt)"를 방지하는 관점에서,
+    작성자가 자신의 코드를 설명·분석·수정할 수 있는지 검증하는 것이 중요합니다.
 
-    [리뷰 관점] ${focusDesc}
+    [평가 기준]
+    ${criteriaDesc}
 
     [코드]
     \`\`\`${language}
     ${sanitizeUserInput(code)}
     \`\`\`
 
-    [출력 형식] (반드시 JSON으로 응답)
+    [출력 형식] (반드시 JSON으로 응답, 모든 텍스트는 한국어로)
     {
       "summary": "전체 요약 (2~3문장)",
+      "score": 0~100,
       "issues": [
         {
           "line": 줄번호 또는 null,
           "severity": "critical" | "warning" | "info",
-          "message": "문제 설명",
-          "suggestion": "수정 제안"
+          "category": "maintainability" | "understanding" | "logic" | "security" | "comprehension",
+          "message": "문제 설명 (한 줄)",
+          "explanation": "왜 문제인지 상세 설명 (2~3문장, 개발자 학습에 도움이 되도록)",
+          "suggestion": "수정 제안",
+          "fixPrompt": "AI 코딩 도구에 넘길 수 있는 구체적 수정 지시문 (파일명, 라인, 변경 내용 포함)"
         }
       ],
-      "score": 0~100 (코드 품질 점수)
+      "categoryScores": [
+        { "category": "카테고리명", "score": 0~100, "summary": "해당 기준 한줄 평가" }
+      ],
+      "comprehensionQuestions": [
+        {
+          "question": "작성자가 답해야 할 질문 (예: '이 함수에서 timeout을 30초로 설정한 이유는?')",
+          "targetLines": [12, 15],
+          "difficulty": "basic" | "intermediate" | "advanced"
+        }
+      ],
+      "comprehensionRisks": [
+        {
+          "section": "lines 12-25 또는 함수명",
+          "riskLevel": "low" | "medium" | "high",
+          "reason": "이해도 위험이 있는 이유",
+          "blackBoxPatterns": ["eslint-disable", "magic number 30000"]
+        }
+      ],
+      "overallComprehensionLevel": "A1~C2 (A1=기초 구문만, B1=중급 패턴, C1=고급 패턴, C2=전문가 수준)"
     }
+
+    [이해도 레벨 기준]
+    A1: 변수 선언, if/else, 함수 호출 수준
+    A2: 배열 메서드, 객체 구조분해, 기본 비동기
+    B1: Promise 체이닝, 에러 핸들링, 모듈 패턴
+    B2: 제네릭, 고차 함수, 스트림/이터레이터
+    C1: 메타프로그래밍, 데코레이터, 복잡한 타입 시스템
+    C2: 컴파일러 패턴, AST 조작, 저수준 최적화
+
+    주의사항:
+    - issues 배열에서 각 이슈는 반드시 category를 포함하세요
+    - comprehensionQuestions는 최소 2개, 최대 5개 생성하세요
+    - fixPrompt는 Claude Code나 Cursor 같은 AI 도구에 바로 붙여넣을 수 있을 만큼 구체적으로 작성하세요
+    - 이슈가 없는 카테고리도 categoryScores에 포함하세요 (점수만 높게)
   `;
 }
 
