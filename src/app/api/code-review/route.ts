@@ -1,12 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { codeReviewRequestSchema, codeReviewResponseSchema } from "@/lib/types";
 import { buildCodeReviewPrompt } from "@/lib/prompts";
 import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/auth";
+import { callGemini } from "@/lib/gemini";
 
-const TIMEOUT_MS = 45_000;
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 10 });
 
 export async function POST(req: Request) {
@@ -35,19 +33,7 @@ export async function POST(req: Request) {
     const { code, language, focus } = parsed.data;
     const prompt = buildCodeReviewPrompt({ code, language, focus });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Gemini API request timed out")), TIMEOUT_MS)
-    );
-
-    const result = await Promise.race([
-      ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      }),
-      timeoutPromise,
-    ]);
-
-    const text = result.text ?? "";
+    const text = await callGemini(prompt);
     const jsonString = text.replace(/```json\n?|```/g, "").trim();
 
     const responseParsed = codeReviewResponseSchema.safeParse(
@@ -72,6 +58,10 @@ export async function POST(req: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Code Review API Error:", message);
-    return NextResponse.json({ error: "코드 리뷰 중 오류가 발생했습니다." }, { status: 500 });
+    const userMessage =
+      message.includes("시간이 초과") || message.includes("과부하") || message.includes("실패")
+        ? message
+        : "코드 리뷰 중 오류가 발생했습니다.";
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
