@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,15 +32,21 @@ interface GenerateResult {
 
 export default function EpisodeGeneratePage() {
   const { seriesId } = useParams<{ seriesId: string }>();
+  const router = useRouter();
   const [series, setSeries] = useState<Series | null>(null);
   const [nextEpisodeNumber, setNextEpisodeNumber] = useState(1);
   const [isPageLoading, setIsPageLoading] = useState(true);
 
   const fetchSeries = useCallback(async () => {
     try {
-      const data = await apiClient<{ series: Series; episodes: Episode[] }>(
-        `/api/writing/series/${seriesId}`
-      );
+      const data = await apiClient<{
+        series: Series & { writing_type?: string };
+        episodes: Episode[];
+      }>(`/api/writing/series/${seriesId}`);
+      if (data.series.writing_type && data.series.writing_type !== "serial") {
+        router.replace(`/writing/${seriesId}`);
+        return;
+      }
       setSeries(data.series);
       const maxEp = Math.max(0, ...data.episodes.map((e) => e.episode_number));
       setNextEpisodeNumber(maxEp + 1);
