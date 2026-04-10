@@ -93,6 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ seriesI
       .from("episodes")
       .insert({
         series_id: seriesId,
+        user_id: userId,
         episode_number: episodeNumber,
         outline: episodeOutline,
         draft: episode.draft,
