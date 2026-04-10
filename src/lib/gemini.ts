@@ -1,8 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
-const TIMEOUT_MS = 60_000;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 3_000;
+const TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 2_000;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
