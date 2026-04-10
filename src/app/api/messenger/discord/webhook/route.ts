@@ -33,7 +33,19 @@ export async function POST(req: Request) {
         return NextResponse.json({ type: 1 });
       }
 
+      const channelId = body.channel_id;
+      const { data: conn } = channelId
+        ? await supabaseAdmin
+            .from("messenger_connections")
+            .select("user_id")
+            .eq("provider", "discord")
+            .eq("chat_id", String(channelId))
+            .eq("is_verified", true)
+            .single()
+        : { data: null };
+
       const { error: insertError } = await supabaseAdmin.from("messenger_notifications").insert({
+        user_id: conn?.user_id ?? null,
         provider: "discord",
         type: "draft_ready",
         draft_id: callback.draftId,
