@@ -171,15 +171,15 @@ alter table messenger_notifications enable row level security;
 alter table publish_history enable row level security;
 alter table scheduled_publishes enable row level security;
 
--- RLS 정책: 본인 데이터만 접근
-create policy "Users can access own data" on series for all using (auth.uid() = user_id);
-create policy "Users can access own data" on episodes for all using (auth.uid() = user_id);
-create policy "Users can access own data" on drafts for all using (auth.uid() = user_id);
-create policy "Users can access own data" on automation_templates for all using (auth.uid() = user_id);
-create policy "Users can access own data" on automation_schedules for all using (auth.uid() = user_id);
-create policy "Users can access own data" on automation_executions for all using (auth.uid() = user_id);
-create policy "Users can access own data" on platform_connections for all using (auth.uid() = user_id);
-create policy "Users can access own data" on messenger_connections for all using (auth.uid() = user_id);
-create policy "Users can access own data" on messenger_notifications for all using (auth.uid() = user_id);
-create policy "Users can access own data" on publish_history for all using (auth.uid() = user_id);
-create policy "Users can access own data" on scheduled_publishes for all using (auth.uid() = user_id);
+-- RLS 정책: 본인 데이터만 접근 (using: read/delete, with check: insert/update)
+create policy "Users can access own data" on series for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on episodes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on drafts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on automation_templates for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on automation_schedules for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on automation_executions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on platform_connections for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on messenger_connections for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on messenger_notifications for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on publish_history for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can access own data" on scheduled_publishes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

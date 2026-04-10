@@ -106,7 +106,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ project
     );
 
     if (!responseParsed.success) {
-      console.error("Draft generate parse failed:", jsonString.slice(0, 200));
+      console.error("Draft generate parse failed");
       return NextResponse.json(
         { error: "AI 응답 파싱에 실패했습니다. 다시 시도해주세요." },
         { status: 502 }

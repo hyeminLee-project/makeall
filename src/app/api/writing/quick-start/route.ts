@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     })();
 
     if (!rawSettings) {
-      console.error("Quick start JSON parse failed:", jsonString.slice(0, 200));
+      console.error("Quick start JSON parse failed");
       return NextResponse.json(
         { error: "AI 응답 파싱에 실패했습니다. 다시 시도해주세요." },
         { status: 502 }
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const validated = schema.safeParse(rawSettings);
 
     if (!validated.success) {
-      console.error("Quick start validation failed:", validated.error.message);
+      console.error("Quick start validation failed");
       return NextResponse.json(
         { error: "AI 응답이 올바른 형식이 아닙니다. 다시 시도해주세요." },
         { status: 502 }
