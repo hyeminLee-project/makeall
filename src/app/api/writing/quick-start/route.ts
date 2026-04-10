@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { quickStartRequestSchema } from "@/lib/types";
+import { quickStartRequestSchema, quickStartResponseSchemas } from "@/lib/types";
+import type { WritingType } from "@/lib/types";
 import { buildQuickStartPrompt } from "@/lib/prompts";
 import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/auth";
@@ -34,16 +35,34 @@ export async function POST(req: Request) {
     const text = await callGemini(prompt);
     const jsonString = text.replace(/```json\n?|```/g, "").trim();
 
-    try {
-      const settings = JSON.parse(jsonString);
-      return NextResponse.json(settings);
-    } catch {
-      console.error("Quick start parse failed:", jsonString.slice(0, 200));
+    const rawSettings = (() => {
+      try {
+        return JSON.parse(jsonString);
+      } catch {
+        return null;
+      }
+    })();
+
+    if (!rawSettings) {
+      console.error("Quick start JSON parse failed:", jsonString.slice(0, 200));
       return NextResponse.json(
         { error: "AI 응답 파싱에 실패했습니다. 다시 시도해주세요." },
         { status: 502 }
       );
     }
+
+    const schema = quickStartResponseSchemas[parsed.data.writingType as WritingType];
+    const validated = schema.safeParse(rawSettings);
+
+    if (!validated.success) {
+      console.error("Quick start validation failed:", validated.error.message);
+      return NextResponse.json(
+        { error: "AI 응답이 올바른 형식이 아닙니다. 다시 시도해주세요." },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json(validated.data);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Quick Start API Error:", message);

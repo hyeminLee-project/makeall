@@ -172,11 +172,51 @@ export const quickStartRequestSchema = z.object({
   writingType: writingTypeEnum,
 });
 
-export const quickStartResponseSchema = z.object({
+export const quickStartSerialResponseSchema = z.object({
   title: z.string(),
+  genre: genreEnum,
+  setting: z.string(),
+  characters: z.array(
+    z.object({
+      name: z.string(),
+      role: z.enum(["protagonist", "antagonist", "supporting", "minor"]),
+      description: z.string(),
+      personality: z.string(),
+    })
+  ),
+  plotOutline: z.string(),
   tone: z.string().optional(),
-  settings: z.record(z.string(), z.unknown()),
 });
+
+export const quickStartEssayResponseSchema = z.object({
+  title: z.string(),
+  topic: z.string(),
+  keywords: z.array(z.string()),
+  tone: z.string().optional(),
+});
+
+export const quickStartColumnResponseSchema = z.object({
+  title: z.string(),
+  topic: z.string(),
+  argument: z.string(),
+  targetAudience: z.string(),
+  tone: z.string().optional(),
+});
+
+export const quickStartShortStoryResponseSchema = z.object({
+  title: z.string(),
+  genre: genreEnum,
+  setting: z.string(),
+  targetLength: z.number().optional(),
+  tone: z.string().optional(),
+});
+
+export const quickStartResponseSchemas = {
+  serial: quickStartSerialResponseSchema,
+  essay: quickStartEssayResponseSchema,
+  column: quickStartColumnResponseSchema,
+  short_story: quickStartShortStoryResponseSchema,
+} as const;
 
 // ─── Serial Novel (연재 소설) ────────────────────────
 
