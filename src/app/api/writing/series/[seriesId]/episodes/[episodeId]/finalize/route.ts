@@ -76,7 +76,7 @@ export async function POST(
     );
 
     if (!continuityParsed.success) {
-      console.error("Failed to parse continuity response:", jsonString.slice(0, 200));
+      console.error("Failed to parse continuity response");
       return NextResponse.json(
         { error: "연속성 업데이트 파싱에 실패했습니다. 다시 시도해주세요." },
         { status: 502 }

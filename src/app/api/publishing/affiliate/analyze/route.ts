@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     );
 
     if (!responseParsed.success) {
-      console.error("Failed to parse affiliate analysis:", jsonString.slice(0, 200));
+      console.error("Failed to parse affiliate analysis");
       return NextResponse.json(
         { error: "AI 응답 파싱에 실패했습니다. 다시 시도해주세요." },
         { status: 502 }
