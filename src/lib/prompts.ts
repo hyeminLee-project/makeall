@@ -441,7 +441,7 @@ const quickStartOutputFormats: Record<WritingType, string> = {
     "genre": "fantasy|romance|thriller|sf|horror|slice_of_life|historical",
     "setting": "세계관 설명 (200자 이내)",
     "characters": [
-      {"name": "이름", "role": "protagonist", "description": "설명", "personality": "성격"}
+      {"name": "이름", "role": "protagonist|antagonist|supporting|minor 중 하나", "description": "설명", "personality": "성격"}
     ],
     "plotOutline": "전체 줄거리 (300자 이내)",
     "tone": "톤/분위기"
