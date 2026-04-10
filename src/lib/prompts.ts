@@ -1,5 +1,5 @@
 import { sanitizeUserInput } from "./sanitize";
-import { Character, SeriesContinuity, StyleProfile } from "./types";
+import { Character, SeriesContinuity, StyleProfile, WritingType } from "./types";
 
 export function buildWritingPrompt({
   input,
@@ -429,6 +429,243 @@ export function buildAffiliateAnalysisPrompt({
       ],
       "overallFit": 0~100 (이 글의 수익화 적합도),
       "tips": ["수익화 개선 팁 1", "팁 2"]
+    }
+  `;
+}
+
+// ─── Quick Start & Writing Types ────────────────────
+
+const quickStartOutputFormats: Record<WritingType, string> = {
+  serial: `{
+    "title": "시리즈 제목",
+    "genre": "fantasy|romance|thriller|sf|horror|slice_of_life|historical",
+    "setting": "세계관 설명 (200자 이내)",
+    "characters": [
+      {"name": "이름", "role": "protagonist|antagonist|supporting|minor 중 하나", "description": "설명", "personality": "성격"}
+    ],
+    "plotOutline": "전체 줄거리 (300자 이내)",
+    "tone": "톤/분위기"
+  }`,
+  essay: `{
+    "title": "에세이 제목",
+    "topic": "주제 설명",
+    "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"],
+    "tone": "톤/분위기"
+  }`,
+  column: `{
+    "title": "칼럼 제목",
+    "topic": "주제 설명",
+    "argument": "핵심 논점/주장",
+    "targetAudience": "타겟 독자층",
+    "tone": "톤/분위기"
+  }`,
+  short_story: `{
+    "title": "단편소설 제목",
+    "genre": "fantasy|romance|thriller|sf|horror|slice_of_life|historical",
+    "setting": "배경 설명 (200자 이내)",
+    "targetLength": 5000,
+    "tone": "톤/분위기"
+  }`,
+};
+
+const writingTypeLabels: Record<WritingType, string> = {
+  serial: "연재소설",
+  essay: "에세이",
+  column: "칼럼",
+  short_story: "단편소설",
+};
+
+export function buildQuickStartPrompt({
+  idea,
+  writingType,
+}: {
+  idea: string;
+  writingType: WritingType;
+}) {
+  const label = writingTypeLabels[writingType];
+  const outputFormat = quickStartOutputFormats[writingType];
+
+  return `
+    당신은 ${label} 기획 전문가입니다.
+    사용자의 한 줄 아이디어를 바탕으로 ${label}의 설정 초안을 생성합니다.
+    사용자가 직접 수정할 것이므로, 구체적이면서도 변경하기 쉬운 초안을 목표로 합니다.
+
+    [아이디어]
+    ${sanitizeUserInput(idea)}
+
+    [출력 형식] (반드시 JSON으로 응답, 모든 텍스트는 한국어로)
+    ${outputFormat}
+
+    주의: JSON만 반환하세요. 설명이나 마크다운은 포함하지 마세요.
+  `;
+}
+
+export function buildEssayGenerationPrompt({
+  title,
+  topic,
+  keywords,
+  tone,
+  referenceMaterials,
+  styleProfile,
+  referenceStyle,
+}: {
+  title: string;
+  topic: string;
+  keywords: string[];
+  tone?: string | null;
+  referenceMaterials?: string | null;
+  styleProfile?: StyleProfile | null;
+  referenceStyle?: string | null;
+}) {
+  const styleGuide = styleProfile
+    ? `
+    [작성자 문체 가이드]
+    - 문장 길이: ${styleProfile.sentenceLength}
+    - 톤: ${styleProfile.tone}
+    - 문장 종결: ${styleProfile.ending}
+    - 유머: ${styleProfile.humor}
+    - 글 구조: ${styleProfile.structure}
+    이 문체를 최대한 반영하여 작성해주세요.`
+    : "";
+
+  const referenceBlock = referenceStyle
+    ? `
+    [레퍼런스 문체]
+    ${sanitizeUserInput(referenceStyle)}`
+    : "";
+
+  return `
+    당신은 에세이 작가의 조수입니다.
+    주제와 키워드를 기반으로 에세이 초안을 작성합니다.
+
+    [에세이 정보]
+    제목: ${sanitizeUserInput(title)}
+    주제: ${sanitizeUserInput(topic)}
+    키워드: ${keywords.map((k) => sanitizeUserInput(k)).join(", ")}
+    ${tone ? `톤: ${sanitizeUserInput(tone)}` : ""}
+    ${referenceMaterials ? `참고자료: ${sanitizeUserInput(referenceMaterials)}` : ""}
+    ${styleGuide}
+    ${referenceBlock}
+
+    목표 분량: 약 2000자
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "draft": "에세이 본문",
+      "wordCount": 글자수,
+      "suggestions": ["개선 제안 1", "개선 제안 2"]
+    }
+  `;
+}
+
+export function buildColumnGenerationPrompt({
+  title,
+  topic,
+  argument,
+  targetAudience,
+  tone,
+  styleProfile,
+  referenceStyle,
+}: {
+  title: string;
+  topic: string;
+  argument: string;
+  targetAudience: string;
+  tone?: string | null;
+  styleProfile?: StyleProfile | null;
+  referenceStyle?: string | null;
+}) {
+  const styleGuide = styleProfile
+    ? `
+    [작성자 문체 가이드]
+    - 문장 길이: ${styleProfile.sentenceLength}
+    - 톤: ${styleProfile.tone}
+    - 문장 종결: ${styleProfile.ending}
+    이 문체를 최대한 반영하여 작성해주세요.`
+    : "";
+
+  const referenceBlock = referenceStyle
+    ? `
+    [레퍼런스 문체]
+    ${sanitizeUserInput(referenceStyle)}`
+    : "";
+
+  return `
+    당신은 칼럼니스트의 조수입니다.
+    주제와 논점을 기반으로 칼럼 초안을 작성합니다.
+
+    [칼럼 정보]
+    제목: ${sanitizeUserInput(title)}
+    주제: ${sanitizeUserInput(topic)}
+    핵심 논점: ${sanitizeUserInput(argument)}
+    타겟 독자: ${sanitizeUserInput(targetAudience)}
+    ${tone ? `톤: ${sanitizeUserInput(tone)}` : ""}
+    ${styleGuide}
+    ${referenceBlock}
+
+    목표 분량: 약 1500자
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "draft": "칼럼 본문",
+      "wordCount": 글자수,
+      "suggestions": ["개선 제안 1", "개선 제안 2"]
+    }
+  `;
+}
+
+export function buildShortStoryGenerationPrompt({
+  title,
+  genre,
+  setting,
+  targetLength,
+  tone,
+  styleProfile,
+  referenceStyle,
+}: {
+  title: string;
+  genre: string;
+  setting: string;
+  targetLength: number;
+  tone?: string | null;
+  styleProfile?: StyleProfile | null;
+  referenceStyle?: string | null;
+}) {
+  const styleGuide = styleProfile
+    ? `
+    [작성자 문체 가이드]
+    - 문장 길이: ${styleProfile.sentenceLength}
+    - 톤: ${styleProfile.tone}
+    - 문장 종결: ${styleProfile.ending}
+    - 유머: ${styleProfile.humor}
+    이 문체를 최대한 반영하여 작성해주세요.`
+    : "";
+
+  const referenceBlock = referenceStyle
+    ? `
+    [레퍼런스 문체]
+    ${sanitizeUserInput(referenceStyle)}`
+    : "";
+
+  return `
+    당신은 단편소설 작가의 조수입니다.
+    설정을 기반으로 단편소설 초안을 작성합니다.
+
+    [작품 정보]
+    제목: ${sanitizeUserInput(title)}
+    장르: ${genre}
+    배경: ${sanitizeUserInput(setting)}
+    ${tone ? `톤: ${sanitizeUserInput(tone)}` : ""}
+    ${styleGuide}
+    ${referenceBlock}
+
+    목표 분량: 약 ${targetLength}자
+
+    [출력 형식] (반드시 JSON으로 응답)
+    {
+      "draft": "단편소설 본문",
+      "wordCount": 글자수,
+      "suggestions": ["개선 제안 1", "개선 제안 2"]
     }
   `;
 }

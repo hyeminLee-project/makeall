@@ -10,7 +10,9 @@ export async function GET() {
 
     const { data, error, count } = await supabaseAdmin
       .from("series")
-      .select("id, title, genre, status, tone, created_at, updated_at", { count: "exact" })
+      .select("id, title, genre, status, tone, writing_type, created_at, updated_at", {
+        count: "exact",
+      })
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .range(0, 49);

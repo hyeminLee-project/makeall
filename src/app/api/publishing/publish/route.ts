@@ -34,6 +34,7 @@ export async function POST(req: Request) {
 
     if (scheduledAt) {
       const { error } = await supabaseAdmin.from("scheduled_publishes").insert({
+        user_id: userId,
         content_id: contentId,
         platforms,
         overrides: overrides ?? null,
@@ -100,6 +101,7 @@ export async function POST(req: Request) {
 
     for (const result of results) {
       await supabaseAdmin.from("publish_history").insert({
+        user_id: userId,
         content_id: contentId,
         platform: result.platform,
         post_url: result.postUrl ?? null,

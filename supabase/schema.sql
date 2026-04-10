@@ -1,20 +1,22 @@
 -- MakeAll - Supabase Schema
 -- Supabase SQL Editor에서 실행
 
--- 1. series (연재 시리즈)
+-- 1. series (글쓰기 프로젝트)
 create table if not exists series (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  writing_type text not null default 'serial',
   title text not null,
-  genre text not null,
-  setting text not null,
+  genre text,
+  setting text,
   characters jsonb not null default '[]',
-  plot_outline text not null,
+  plot_outline text,
   target_episode_length int default 5000,
   style_profile_id uuid,
   tone text,
   reference_style text,
   continuity_state jsonb,
+  type_metadata jsonb,
   status text default 'active',
   created_at timestamptz default now(),
   updated_at timestamptz default now()

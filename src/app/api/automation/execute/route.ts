@@ -1,14 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createRateLimit, getClientIp } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAuthUser } from "@/lib/auth";
 import { buildTemplatePrompt, validateRules } from "@/lib/template-engine";
 import { automationAiResponseSchema } from "@/lib/types";
+import { callGemini } from "@/lib/gemini";
 import { z } from "zod/v4";
 
-const TIMEOUT_MS = 30_000;
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 const limiter = createRateLimit({ windowMs: 60_000, maxRequests: 3 });
 
 const executeRequestSchema = z.object({
@@ -30,10 +28,6 @@ export async function POST(req: Request) {
     const auth = await getAuthUser();
     if (auth instanceof NextResponse) return auth;
     const { userId } = auth;
-
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, { status: 500 });
-    }
 
     const parsed = executeRequestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -60,19 +54,7 @@ export async function POST(req: Request) {
       sampleOutput: template.sample_output,
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Gemini API request timed out")), TIMEOUT_MS)
-    );
-
-    const result = await Promise.race([
-      ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      }),
-      timeoutPromise,
-    ]);
-
-    const text = result.text ?? "";
+    const text = await callGemini(prompt);
     const jsonString = text.replace(/```json\n?|```/g, "").trim();
 
     let parsed2: { content: string };

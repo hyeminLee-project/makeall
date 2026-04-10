@@ -61,7 +61,16 @@ export async function POST(req: Request) {
 
       const chatId = update.callback_query.message?.chat.id;
       if (chatId) {
+        const { data: conn } = await supabaseAdmin
+          .from("messenger_connections")
+          .select("user_id")
+          .eq("provider", "telegram")
+          .eq("chat_id", String(chatId))
+          .eq("is_verified", true)
+          .single();
+
         const { error: insertError } = await supabaseAdmin.from("messenger_notifications").insert({
+          user_id: conn?.user_id ?? null,
           provider: "telegram",
           type: "draft_ready",
           draft_id: callback.draftId,

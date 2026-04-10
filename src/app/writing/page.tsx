@@ -1,26 +1,37 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeriesCard } from "@/components/writing/series-card";
-import { apiClient } from "@/lib/api-client";
+import { getAuthUser } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+import { NextResponse } from "next/server";
 
 interface Series {
   id: string;
   title: string;
   genre: string;
+  writing_type: string;
   status: string;
   updated_at: string;
 }
 
 async function getSeriesList(): Promise<{ series: Series[]; total: number }> {
-  try {
-    // Server Component에서 내부 API 직접 호출 대신 Supabase 직접 사용
-    // 하지만 auth가 필요하므로 API route를 통해 호출
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    return await apiClient<{ series: Series[]; total: number }>(`${baseUrl}/api/writing/series`);
-  } catch {
-    return { series: [], total: 0 };
+  const auth = await getAuthUser();
+  if (auth instanceof NextResponse) {
+    redirect("/login");
   }
+
+  const { data, count } = await supabaseAdmin
+    .from("series")
+    .select("id, title, genre, status, tone, writing_type, created_at, updated_at", {
+      count: "exact",
+    })
+    .eq("user_id", auth.userId)
+    .order("updated_at", { ascending: false })
+    .range(0, 49);
+
+  return { series: (data as Series[]) ?? [], total: count ?? 0 };
 }
 
 export default async function WritingPage() {
@@ -31,20 +42,20 @@ export default async function WritingPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Writing Studio</h1>
-          <p className="text-muted-foreground mt-1 text-sm">AI와 함께 연재 소설을 써보세요.</p>
+          <p className="text-muted-foreground mt-1 text-sm">AI와 함께 글을 써보세요.</p>
         </div>
         <Link href="/writing/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" />새 시리즈
+            <Plus className="mr-2 h-4 w-4" />새 프로젝트
           </Button>
         </Link>
       </div>
 
       {series.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="text-muted-foreground">아직 시리즈가 없습니다.</p>
+          <p className="text-muted-foreground">아직 프로젝트가 없습니다.</p>
           <Link href="/writing/new" className="mt-4">
-            <Button variant="outline">첫 시리즈 만들기</Button>
+            <Button variant="outline">첫 프로젝트 만들기</Button>
           </Link>
         </div>
       ) : (
@@ -55,6 +66,7 @@ export default async function WritingPage() {
               id={s.id}
               title={s.title}
               genre={s.genre}
+              writingType={s.writing_type}
               updatedAt={s.updated_at}
             />
           ))}
