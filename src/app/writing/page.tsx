@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeriesCard } from "@/components/writing/series-card";
-import { apiClient } from "@/lib/api-client";
+import { getAuthUser } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+import { NextResponse } from "next/server";
 
 interface Series {
   id: string;
@@ -14,14 +17,21 @@ interface Series {
 }
 
 async function getSeriesList(): Promise<{ series: Series[]; total: number }> {
-  try {
-    // Server Component에서 내부 API 직접 호출 대신 Supabase 직접 사용
-    // 하지만 auth가 필요하므로 API route를 통해 호출
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    return await apiClient<{ series: Series[]; total: number }>(`${baseUrl}/api/writing/series`);
-  } catch {
-    return { series: [], total: 0 };
+  const auth = await getAuthUser();
+  if (auth instanceof NextResponse) {
+    redirect("/login");
   }
+
+  const { data, count } = await supabaseAdmin
+    .from("series")
+    .select("id, title, genre, status, tone, writing_type, created_at, updated_at", {
+      count: "exact",
+    })
+    .eq("user_id", auth.userId)
+    .order("updated_at", { ascending: false })
+    .range(0, 49);
+
+  return { series: (data as Series[]) ?? [], total: count ?? 0 };
 }
 
 export default async function WritingPage() {
