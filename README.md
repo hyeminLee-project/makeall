@@ -91,35 +91,54 @@ DISCORD_PUBLIC_KEY=       # Discord public key (optional)
 
 ```text
 src/
-├── app/api/
-│   ├── code-review/          # Code review API
-│   ├── writing/series/       # Serial novel API (6 routes)
-│   ├── publishing/
-│   │   ├── publish/          # Multi-platform publish
-│   │   ├── clipboard/        # Naver/Postype clipboard
-│   │   ├── platforms/        # Platform connections
-│   │   └── affiliate/        # Affiliate link assistant
-│   ├── automation/
-│   │   ├── templates/        # Template CRUD
-│   │   ├── schedules/        # Schedule CRUD
-│   │   └── execute/          # Template execution
-│   └── messenger/
-│       ├── telegram/         # Telegram webhook + setup
-│       ├── discord/          # Discord webhook
-│       ├── connect/          # Account linking
-│       └── status/           # Connection status
-├── lib/
-│   ├── types.ts              # Zod schemas
-│   ├── prompts.ts            # AI prompt builders
-│   ├── publisher/            # Platform abstraction (7 publishers)
-│   ├── messenger/            # Messenger abstraction (Telegram + Discord)
-│   ├── affiliate/            # Coupang Partners client
-│   ├── template-engine.ts    # Variable substitution + rule validation
-│   ├── rate-limit.ts         # Rate limiter
-│   ├── sanitize.ts           # Prompt injection protection
-│   └── supabase.ts           # Supabase client
-└── supabase/
-    └── migration.sql         # 11 tables
+├── middleware.ts                # Next.js middleware
+├── hooks/
+│   └── use-async-action.ts     # Async action hook
+├── components/
+│   ├── ui/                     # Reusable UI (16 components)
+│   ├── writing/                # Writing domain components (14)
+│   ├── app-sidebar.tsx         # Sidebar navigation
+│   └── header.tsx              # App header
+├── app/
+│   ├── page.tsx                # Main dashboard
+│   ├── login/                  # Login page
+│   ├── writing/                # Writing pages (series, episodes)
+│   └── api/
+│       ├── code-review/        # Code review API
+│       ├── writing/
+│       │   ├── quick-start/    # Quick content generation
+│       │   ├── projects/       # Project CRUD + generate
+│       │   └── series/         # Serial novel (CRUD, episodes, finalize)
+│       ├── publishing/
+│       │   ├── publish/        # Multi-platform publish
+│       │   ├── clipboard/      # Naver/Postype clipboard
+│       │   ├── platforms/      # Platform connections
+│       │   └── affiliate/      # Affiliate analyze + link generation
+│       ├── automation/
+│       │   ├── templates/      # Template CRUD + preview
+│       │   ├── schedules/      # Schedule CRUD
+│       │   └── execute/        # Template execution
+│       └── messenger/
+│           ├── telegram/       # Telegram webhook + setup
+│           ├── discord/        # Discord webhook
+│           ├── connect/        # Account linking
+│           └── status/         # Connection status
+└── lib/
+    ├── types.ts                # Zod schemas
+    ├── prompts.ts              # AI prompt builders
+    ├── gemini.ts               # Gemini AI client
+    ├── auth.ts                 # Authentication
+    ├── api-client.ts           # API client
+    ├── crypto.ts               # Cryptography utilities
+    ├── utils.ts                # General utilities
+    ├── rate-limit.ts           # Rate limiter
+    ├── sanitize.ts             # Prompt injection protection
+    ├── supabase.ts             # Supabase server client
+    ├── supabase-browser.ts     # Supabase browser client
+    ├── template-engine.ts      # Variable substitution + rule validation
+    ├── publisher/              # Platform abstraction (6 publishers)
+    ├── messenger/              # Messenger abstraction (Telegram + Discord)
+    └── affiliate/              # Coupang Partners client
 ```
 
 ## License
